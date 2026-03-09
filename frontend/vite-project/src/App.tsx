@@ -23,10 +23,11 @@ type SavingSummary = {
 }
 
 function App() {
-  const [members, setMembers] = useState<Member[]>([])
-  const [summary, setSummary] = useState<SavingSummary | null>(null)
-  const [alert, setAlert] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+	const [members, setMembers] = useState<Member[]>([])
+	const [summary, setSummary] = useState<SavingSummary | null>(null)
+	const [alert, setAlert] = useState<string | null>(null)
+	const [isLoading, setIsLoading] = useState(false)
+	const [activeSection, setActiveSection] = useState<'overview' | 'members' | 'savings'>('overview')
   const [memberForm, setMemberForm] = useState({
     name: '',
     phone: '',
@@ -140,18 +141,52 @@ function App() {
     }
   }
 
-  return (
-    <div className="app-shell">
-      <header className="hero">
-        <p className="eyebrow">Chama Ops • Minimal MVP</p>
-        <h1>Group Treasury Command Center</h1>
-        <p>
-          Track members, savings, and simple loan readiness. This layout is ready to grow toward role-based
-          dashboards, loan workflows, and Railway deployment.
-        </p>
-      </header>
+	return (
+		<div className="app-shell">
+			<aside className="sidebar">
+				<div className="sidebar-title">Chama Manager</div>
+				<nav className="sidebar-nav">
+					<button
+						type="button"
+						className={`sidebar-link ${activeSection === 'overview' ? 'active' : ''}`}
+						onClick={() => setActiveSection('overview')}
+					>
+						Overview
+					</button>
+					<button
+						type="button"
+						className={`sidebar-link ${activeSection === 'members' ? 'active' : ''}`}
+						onClick={() => setActiveSection('members')}
+					>
+						Members
+					</button>
+					<button
+						type="button"
+						className={`sidebar-link ${activeSection === 'savings' ? 'active' : ''}`}
+						onClick={() => setActiveSection('savings')}
+					>
+						Savings
+					</button>
+				</nav>
+			</aside>
+			<div className="main-column">
+				<header className="topbar">
+					<div className="topbar-left">
+						<div className="topbar-brand">Group Treasury</div>
+						<p className="topbar-subtitle">Lightweight command center for your chama</p>
+					</div>
+				</header>
+				<header className="hero">
+					<p className="eyebrow">Chama Ops • Minimal MVP</p>
+					<h1>Group Treasury Command Center</h1>
+					<p>
+						Track members, savings, and simple loan readiness. This layout is ready to grow toward role-based
+						dashboards, loan workflows, and Railway deployment.
+					</p>
+				</header>
 
-      <section className="summary-grid">
+				{activeSection === 'overview' && (
+		      <section className="summary-grid">
         <article className="card">
           <header>
             <h2>Group Savings</h2>
@@ -183,14 +218,16 @@ function App() {
           </p>
           <p className="muted">Rolling average per member</p>
         </article>
-      </section>
+		      </section>
+				)}
 
-      {alert && <div className="alert">{alert}</div>}
+		      {alert && <div className="alert">{alert}</div>}
 
-      <section className="form-grid">
-        <article className="card form-card">
-          <h3>Register a Member</h3>
-          <form onSubmit={handleMemberSubmit} className="form-stack">
+				{activeSection === 'members' && (
+		      <section className="form-grid">
+		        <article className="card form-card">
+		          <h3>Register a Member</h3>
+		          <form onSubmit={handleMemberSubmit} className="form-stack">
             <label>
               Full name
               <input
@@ -235,12 +272,40 @@ function App() {
                 required
                 minLength={3}
               />
-            </label>
-            <button type="submit">Save member</button>
-          </form>
-        </article>
-        <article className="card form-card">
-          <h3>Record Monthly Savings</h3>
+		            </label>
+		            <button type="submit">Save member</button>
+		          </form>
+		        </article>
+		        <article className="card">
+		          <h3>Existing Members</h3>
+		          {isLoading ? (
+		            <p className="muted">Loading members…</p>
+		          ) : members.length === 0 ? (
+		            <p className="muted">No members registered yet.</p>
+		          ) : (
+		            <ul className="member-list">
+		              {members.map((member) => (
+		                <li key={member.id} className="member-list-item">
+		                  <div className="member-list-main">
+		                    <span className="member-list-name">{member.name}</span>
+		                    <span className="member-list-number">{member.memberNumber}</span>
+		                  </div>
+		                  <div className="member-list-meta">
+		                    <span>{member.phone}</span>
+		                    <span>{member.nationalId}</span>
+		                  </div>
+		                </li>
+		              ))}
+		            </ul>
+		          )}
+		        </article>
+		      </section>
+				)}
+
+				{activeSection === 'savings' && (
+		      <section className="form-grid">
+		        <article className="card form-card">
+		          <h3>Record Monthly Savings</h3>
           <form onSubmit={handleSavingSubmit} className="form-stack">
             <label>
               Member
@@ -287,11 +352,13 @@ function App() {
               />
             </label>
             <button type="submit">Record saving</button>
-          </form>
-        </article>
-      </section>
-
-      <section className="member-table">
+		          </form>
+		        </article>
+		      </section>
+				)}
+		
+				{activeSection === 'overview' && (
+		      <section className="member-table">
         <header>
           <h3>Member Balances</h3>
           {isLoading && <span className="muted">Refreshing data…</span>}
@@ -308,12 +375,14 @@ function App() {
               </article>
             ))}
           </div>
-        ) : (
-          <p className="muted">Register the first member to see balances.</p>
-        )}
-      </section>
-    </div>
-  )
+		        ) : (
+		          <p className="muted">Register the first member to see balances.</p>
+		        )}
+		      </section>
+				)}
+			</div>
+		</div>
+	)
 }
 
 export default App
