@@ -1,0 +1,7 @@
+node_modules/
+package-lock.json
+backend/node_modules/
+frontend/vite-project/node_modules/
+frontend/vite-project/dist/
+.env
+.DS_Store

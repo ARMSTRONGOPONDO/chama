@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Member {
+  id           String    @id @default(cuid())
+  memberNumber String    @unique
+  name         String
+  phone        String    @unique
+  nationalId   String    @unique
+  dateJoined   DateTime
+  role         Role      @default(MEMBER)
+  savings      Saving[]
+  loans        Loan[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Saving {
+  id         String   @id @default(cuid())
+  member     Member   @relation(fields: [memberId], references: [id])
+  memberId   String
+  amount     Decimal  @db.Decimal(12, 2)
+  month      DateTime
+  recordedAt DateTime @default(now())
+  note       String?
+}
+
+model Loan {
+  id                   String        @id @default(cuid())
+  member               Member        @relation(fields: [memberId], references: [id])
+  memberId             String
+  principal            Decimal       @db.Decimal(12, 2)
+  interestRate         Decimal       @db.Decimal(5, 2)
+  interestAmount       Decimal       @db.Decimal(12, 2)
+  monthlyInstallment   Decimal       @db.Decimal(12, 2)
+  termMonths           Int
+  purpose              String
+  issuedAt             DateTime      @default(now())
+  dueDate              DateTime
+  status               LoanStatus    @default(APPROVED)
+  repayments           Repayment[]
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+}
+
+model Repayment {
+  id        String   @id @default(cuid())
+  loan      Loan     @relation(fields: [loanId], references: [id])
+  loanId    String
+  amount    Decimal  @db.Decimal(12, 2)
+  paidAt    DateTime @default(now())
+  note      String?
+}
+
+enum Role {
+  ADMIN
+  TREASURER
+  MEMBER
+}
+
+enum LoanStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID
+}
