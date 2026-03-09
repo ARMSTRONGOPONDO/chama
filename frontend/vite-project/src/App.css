@@ -94,11 +94,12 @@
 }
 
 .hero {
-	background-color: var(--color-surface);
-	border-radius: 1.5rem;
+	background: linear-gradient(135deg, #f5f3ff, #f9fafb);
+	border-radius: 1.25rem;
 	border: 1px solid var(--color-border-soft);
-	padding: 1.75rem 1.5rem;
-	box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+	border-left: 4px solid var(--color-primary);
+	padding: 1.5rem 1.4rem;
+	box-shadow: none;
 }
 
 .hero h1 {
@@ -120,11 +121,30 @@
 	gap: 1rem;
 }
 
+.summary-grid .card {
+	background-color: transparent;
+	border: 0;
+	padding: 0.25rem 0.25rem 0.5rem;
+	box-shadow: none;
+}
+
+.summary-grid .card header {
+	padding-bottom: 0.1rem;
+}
+
+.summary-grid .card h2 {
+	font-size: 0.95rem;
+}
+
+.summary-grid .metric {
+	font-size: 1.4rem;
+}
+
 .card {
 	background-color: var(--color-surface);
-	border-radius: 1.25rem;
+	border-radius: 1.1rem;
 	border: 1px solid var(--color-border-soft);
-	padding: 1.25rem 1.2rem;
+	padding: 1.1rem 1.1rem;
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
@@ -158,7 +178,7 @@
 .form-grid {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-	gap: 1rem;
+	gap: 1.25rem;
 }
 
 .form-card h3 {
@@ -216,23 +236,24 @@ button {
 
 .member-table {
 	background-color: var(--color-surface);
-	border-radius: 1.25rem;
+	border-radius: 1.1rem;
 	border: 1px solid var(--color-border-soft);
-	padding: 1.25rem 1.2rem;
+	padding: 1.1rem 1.1rem 0.75rem;
 }
 
 .member-grid {
 	margin-top: 1rem;
 	display: grid;
-	gap: 0.9rem;
-	grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+	gap: 0;
+	grid-template-columns: 1fr;
 }
 
 .member-card {
-	padding: 1rem;
-	border-radius: 0.9rem;
-	border: 1px solid var(--color-border-soft);
-	background-color: #f9fafb;
+	padding: 0.75rem 0;
+	border-radius: 0;
+	border: 0;
+	border-bottom: 1px solid var(--color-border-soft);
+	background-color: transparent;
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -250,19 +271,31 @@ button {
 	display: flex;
 	flex-direction: column;
 	gap: 0.5rem;
+ 	border-top: 1px solid var(--color-border-soft);
 }
 
 .member-list-item {
-	padding: 0.6rem 0.4rem;
-	border-radius: 0.75rem;
+	padding: 0.55rem 0;
+	border-radius: 0;
 	display: flex;
 	flex-direction: column;
 	gap: 0.15rem;
-	border: 1px solid transparent;
+	border: 0;
+	border-bottom: 1px solid var(--color-border-soft);
+	cursor: default;
 }
 
 .member-list-item:nth-child(odd) {
-	background-color: #f9fafb;
+	background-color: transparent;
+}
+
+.member-list-item.active {
+	border-color: var(--color-primary);
+	background-color: #eef2ff;
+}
+
+.guarantor-list .member-list-item {
+	cursor: pointer;
 }
 
 .member-list-main {
@@ -287,6 +320,109 @@ button {
 	justify-content: space-between;
 	font-size: 0.8rem;
 	color: #6b7280;
+}
+
+.loan-form-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+	gap: 1.25rem;
+}
+
+.guarantor-hint {
+	font-size: 0.8rem;
+	color: #4b5563;
+	margin-top: 0.5rem;
+}
+
+.guarantor-badge {
+	font-size: 0.7rem;
+	font-weight: 600;
+	color: #4c1d95;
+}
+
+.loan-table {
+	background-color: #f9fafb;
+	border-radius: 1.1rem;
+	border: 1px solid var(--color-border-soft);
+	padding: 1.1rem 1.1rem 0.8rem;
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.loan-grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 0;
+}
+
+.loan-card {
+	padding: 0.85rem 0;
+	border-radius: 0;
+	border: 0;
+	border-bottom: 1px solid var(--color-border-soft);
+	background-color: transparent;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.loan-card-main {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	gap: 0.75rem;
+}
+
+.loan-amounts {
+	text-align: right;
+}
+
+.loan-card-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.4rem;
+	margin-top: 0.4rem;
+}
+
+.loan-pill {
+	border-radius: 999px;
+	border: 1px solid var(--color-border-soft);
+	padding: 0.15rem 0.6rem;
+	font-size: 0.75rem;
+	color: #374151;
+	background-color: #e5e7eb;
+}
+
+.loan-pill-type {
+	background-color: #eef2ff;
+	color: #4c1d95;
+	border-color: #c4b5fd;
+}
+
+.loan-pill-status {
+	text-transform: capitalize;
+}
+
+.loan-guarantors {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	margin-top: 0.25rem;
+}
+
+.loan-guarantor-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.25rem;
+}
+
+.loan-guarantor-chip {
+	border-radius: 999px;
+	border: 1px solid #e5e7eb;
+	padding: 0.1rem 0.5rem;
+	font-size: 0.75rem;
+	background-color: #ffffff;
 }
 
 @media (max-width: 640px) {

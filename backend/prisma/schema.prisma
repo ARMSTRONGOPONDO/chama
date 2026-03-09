@@ -22,6 +22,7 @@ model Member {
   role         Role      @default(MEMBER)
   savings      Saving[]
   loans        Loan[]
+  guarantees   LoanGuarantor[]
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
@@ -50,6 +51,8 @@ model Loan {
   dueDate              DateTime
   status               LoanStatus    @default(APPROVED)
   repayments           Repayment[]
+  type                 LoanType      @default(SHORT_TERM)
+  guarantors           LoanGuarantor[]
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 }
@@ -63,6 +66,14 @@ model Repayment {
   note      String?
 }
 
+model LoanGuarantor {
+  id        String @id @default(cuid())
+  loan      Loan   @relation(fields: [loanId], references: [id])
+  loanId    String
+  member    Member @relation(fields: [memberId], references: [id])
+  memberId  String
+}
+
 enum Role {
   ADMIN
   TREASURER
@@ -74,4 +85,9 @@ enum LoanStatus {
   APPROVED
   REJECTED
   PAID
+}
+
+enum LoanType {
+  SHORT_TERM
+  SIX_MONTH
 }
