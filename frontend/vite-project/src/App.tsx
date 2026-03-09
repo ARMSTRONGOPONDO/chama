@@ -262,6 +262,10 @@ function App() {
 		}
 	}
 
+	const handleSectionClick = (section: 'overview' | 'members' | 'savings' | 'loans') => {
+		setActiveSection(section)
+	}
+
 	return (
 		<div className="app-shell">
 			<aside className="sidebar">
@@ -270,28 +274,28 @@ function App() {
 					<button
 						type="button"
 						className={`sidebar-link ${activeSection === 'overview' ? 'active' : ''}`}
-						onClick={() => setActiveSection('overview')}
+						onClick={() => handleSectionClick('overview')}
 					>
 						Overview
 					</button>
 					<button
 						type="button"
 						className={`sidebar-link ${activeSection === 'members' ? 'active' : ''}`}
-						onClick={() => setActiveSection('members')}
+						onClick={() => handleSectionClick('members')}
 					>
 						Members
 					</button>
 					<button
 						type="button"
 						className={`sidebar-link ${activeSection === 'savings' ? 'active' : ''}`}
-						onClick={() => setActiveSection('savings')}
+						onClick={() => handleSectionClick('savings')}
 					>
 						Savings
 					</button>
 					<button
 						type="button"
 						className={`sidebar-link ${activeSection === 'loans' ? 'active' : ''}`}
-						onClick={() => setActiveSection('loans')}
+						onClick={() => handleSectionClick('loans')}
 					>
 						Loans
 					</button>
@@ -304,14 +308,7 @@ function App() {
 						<p className="topbar-subtitle">Lightweight command center for your chama</p>
 					</div>
 				</header>
-				<header className="hero">
-					<p className="eyebrow">Chama Ops • Minimal MVP</p>
-					<h1>Group Treasury Command Center</h1>
-					<p>
-						Track members, savings, and simple loan readiness. This layout is ready to grow toward role-based
-						dashboards, loan workflows, and Railway deployment.
-					</p>
-				</header>
+
 
 				{activeSection === 'overview' && (
 		      <section className="summary-grid">
