@@ -19,12 +19,18 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    const member = await prisma.member.create({ data: parseResult.data });
+    const member = await prisma.member.create({
+      data: {
+        ...parseResult.data,
+        dateJoined: new Date(parseResult.data.dateJoined),
+      },
+    });
     res.status(201).json(member);
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      return res.status(400).json({ error: "Member data violates uniqueness" });
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return res.status(400).json({ error: "Member number, phone, or national ID already exists" });
     }
+    console.error("Failed to create member", error);
     res.status(500).json({ error: "Unable to create member" });
   }
 });

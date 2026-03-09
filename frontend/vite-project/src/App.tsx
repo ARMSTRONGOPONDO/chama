@@ -78,7 +78,31 @@ function App() {
       })
 
       if (!response.ok) {
-        throw new Error('Unable to register member')
+        let message = 'Failed to register member.'
+
+        try {
+          const data = (await response.json()) as {
+            error?: string
+            errors?: { message?: string }[]
+          }
+
+          if (Array.isArray(data?.errors) && data.errors.length > 0) {
+            const fieldMessages = data.errors
+              .map((err) => err.message)
+              .filter(Boolean)
+              .join(' ')
+            if (fieldMessages) {
+              message = `Please fix: ${fieldMessages}`
+            }
+          } else if (typeof data?.error === 'string') {
+            message = data.error
+          }
+        } catch (parseError) {
+          console.error('Failed to parse member registration error response', parseError)
+        }
+
+        setAlert(message)
+        return
       }
 
       setMemberForm({ name: '', phone: '', nationalId: '', dateJoined: '', memberNumber: '' })
@@ -173,6 +197,7 @@ function App() {
                 value={memberForm.name}
                 onChange={(event) => setMemberForm((prev) => ({ ...prev, name: event.target.value }))}
                 required
+                minLength={3}
               />
             </label>
             <label>
@@ -181,6 +206,7 @@ function App() {
                 value={memberForm.phone}
                 onChange={(event) => setMemberForm((prev) => ({ ...prev, phone: event.target.value }))}
                 required
+                minLength={8}
               />
             </label>
             <label>
@@ -189,6 +215,7 @@ function App() {
                 value={memberForm.nationalId}
                 onChange={(event) => setMemberForm((prev) => ({ ...prev, nationalId: event.target.value }))}
                 required
+                minLength={6}
               />
             </label>
             <label>
@@ -206,6 +233,7 @@ function App() {
                 value={memberForm.memberNumber}
                 onChange={(event) => setMemberForm((prev) => ({ ...prev, memberNumber: event.target.value }))}
                 required
+                minLength={3}
               />
             </label>
             <button type="submit">Save member</button>
