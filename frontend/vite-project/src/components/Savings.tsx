@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { API_BASE } from '../config';
 import type { Member, Group } from '../types';
+import { Calendar } from './Calendar';
 
 type SavingsProps = {
     currentUser: Member | null;
@@ -21,8 +22,10 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
     const [selectedGroupId, setSelectedGroupId] = useState('');
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
     const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
     const [bulkEntries, setBulkEntries] = useState<BulkSavingEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const calendarRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const fetchGroups = async () => {
@@ -41,24 +44,40 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
         if (currentUser) fetchGroups();
     }, [currentUser]);
 
+    // Initialize bulk entries when group is selected
     useEffect(() => {
         if (selectedGroupId) {
             const group = groups.find(g => g.id === selectedGroupId);
             if (group) {
                 setSelectedGroup(group);
-                setBulkEntries(group.members.map(m => ({
-                    memberId: m.id,
-                    name: m.name,
-                    amount: '',
-                    transactionReference: '',
-                    note: ''
-                })));
+                // Preserve existing amounts if group didn't change
+                setBulkEntries(group.members.map(m => {
+                    const existing = bulkEntries.find(e => e.memberId === m.id);
+                    return {
+                        memberId: m.id,
+                        name: m.name,
+                        amount: existing?.amount || '',
+                        transactionReference: existing?.transactionReference || '',
+                        note: existing?.note || ''
+                    };
+                }));
             }
         } else {
             setSelectedGroup(null);
             setBulkEntries([]);
         }
     }, [selectedGroupId, groups]);
+
+    // Close calendar on outside click
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+                setIsCalendarOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const handleEntryChange = (memberId: string, field: keyof BulkSavingEntry, value: string) => {
         setBulkEntries(prev => prev.map(entry => 
@@ -88,7 +107,7 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
                     body: JSON.stringify({
                         memberId: entry.memberId,
                         amount: entry.amount,
-                        month: month,
+                        month: `${month}-01`, // Send as full date
                         transactionReference: entry.transactionReference,
                         note: entry.note
                     }),
@@ -132,21 +151,46 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
                     </div>
                     
                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', position: 'relative' }} ref={calendarRef}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Contribution Month</span>
-                            <input 
-                                type="month" 
-                                value={month} 
-                                onChange={(e) => setMonth(e.target.value)}
-                                style={{ padding: '0.5rem', width: '180px', background: 'white' }}
-                            />
+                            <div 
+                                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                                style={{ 
+                                    padding: '0.5rem', 
+                                    width: '200px', 
+                                    background: 'white', 
+                                    border: '1px solid var(--color-primary)', 
+                                    borderRadius: '0.5rem',
+                                    cursor: 'pointer',
+                                    fontSize: '0.9rem',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    boxShadow: '0 2px 4px rgba(124, 58, 237, 0.1)'
+                                }}
+                            >
+                                <span style={{ fontWeight: 600 }}>{new Date(month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                                <span>📅</span>
+                            </div>
+                            {isCalendarOpen && (
+                                <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: '8px' }}>
+                                    <Calendar 
+                                        mode="month"
+                                        selectedDate={new Date(month + '-01')} 
+                                        onChange={(date) => {
+                                            setMonth(date.toISOString().slice(0, 7));
+                                            setIsCalendarOpen(false);
+                                        }} 
+                                    />
+                                </div>
+                            )}
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Target Group</span>
                             <select 
                                 value={selectedGroupId} 
                                 onChange={(e) => setSelectedGroupId(e.target.value)}
-                                style={{ padding: '0.5rem', minWidth: '220px', background: 'white' }}
+                                style={{ padding: '0.5rem', minWidth: '220px', background: 'white', border: '1px solid var(--color-border-soft)' }}
                             >
                                 <option value="">Select a Group...</option>
                                 {groups.map(g => (

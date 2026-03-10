@@ -1,6 +1,7 @@
 import type { Member, MemberForm } from '../types';
 import { API_BASE } from '../config';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Calendar } from './Calendar';
 
 type MembersProps = {
     members: Member[];
@@ -24,6 +25,19 @@ export function Members({
     setAlert 
 }: MembersProps) {
     const [searchTerm, setSearchTerm] = useState('');
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    const calendarRef = useRef<HTMLLabelElement>(null);
+
+    // Close calendar on outside click
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+                setIsCalendarOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     const handleDeleteMember = async (memberId: string, memberName: string) => {
         if (!window.confirm(`Are you sure you want to delete ${memberName}? This action cannot be undone.`)) {
@@ -63,6 +77,14 @@ export function Members({
         member.accountNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         member.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+    // Helper to format date without timezone shift
+    const formatLocalDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
     return (
         <section className="form-grid">
@@ -132,15 +154,33 @@ export function Members({
                             />
                         </label>
                     </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                        <label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', position: 'relative' }}>
+                        <label ref={calendarRef}>
                             Date joined
-                            <input
-                                type="date"
-                                value={memberForm.dateJoined}
-                                onChange={(event) => setMemberForm((prev) => ({ ...prev, dateJoined: event.target.value }))}
-                                required
-                            />
+                            <div 
+                                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                                style={{ 
+                                    padding: '0.6rem 0.75rem', 
+                                    border: '1px solid var(--color-border-soft)', 
+                                    borderRadius: '0.5rem', 
+                                    cursor: 'pointer',
+                                    background: '#fff',
+                                    fontSize: '0.95rem'
+                                }}
+                            >
+                                {memberForm.dateJoined || 'Select Date'}
+                            </div>
+                            {isCalendarOpen && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: '5px' }}>
+                                    <Calendar 
+                                        selectedDate={memberForm.dateJoined ? new Date(memberForm.dateJoined) : new Date()} 
+                                        onChange={(date) => {
+                                            setMemberForm(prev => ({ ...prev, dateJoined: formatLocalDate(date) }));
+                                            setIsCalendarOpen(false);
+                                        }} 
+                                    />
+                                </div>
+                            )}
                         </label>
                         <label>
                             Member No.
@@ -184,32 +224,34 @@ export function Members({
                             {filteredMembers.length === 0 ? (
                                 <tr><td colSpan={4} style={{ padding: '2rem', textAlign: 'center' }} className="muted">No members found matching "{searchTerm}"</td></tr>
                             ) : (
-                                filteredMembers.map((member) => (
-                                    <tr key={member.id} style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
-                                        <td style={{ padding: '0.75rem' }}>
-                                            <div style={{ fontWeight: 600 }}>{member.name}</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>No: {member.memberNumber}</div>
-                                        </td>
-                                        <td style={{ padding: '0.75rem' }}>
-                                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)' }}>Acc: {member.accountNumber}</div>
-                                            <span className="loan-pill" style={{ fontSize: '0.65rem' }}>{member.role}</span>
-                                        </td>
-                                        <td style={{ padding: '0.75rem' }}>
-                                            <div style={{ fontSize: '0.8rem' }}>{member.phone}</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{member.email || 'No email'}</div>
-                                        </td>
-                                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                            {currentUser?.role === 'ADMIN' && member.role !== 'ADMIN' && (
-                                                <button 
-                                                    onClick={() => handleDeleteMember(member.id, member.name)}
-                                                    style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', background: 'transparent', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '0.4rem', cursor: 'pointer' }}
-                                                >
-                                                    Delete
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))
+                                filteredMembers.map((member) => {
+                                    return (
+                                        <tr key={member.id} style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <div style={{ fontWeight: 600 }}>{member.name}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>No: {member.memberNumber}</div>
+                                            </td>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--color-primary)' }}>Acc: {member.accountNumber}</div>
+                                                <span className="loan-pill" style={{ fontSize: '0.65rem' }}>{member.role}</span>
+                                            </td>
+                                            <td style={{ padding: '0.75rem' }}>
+                                                <div style={{ fontSize: '0.8rem' }}>{member.phone}</div>
+                                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{member.email || 'No email'}</div>
+                                            </td>
+                                            <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                                                {currentUser?.role === 'ADMIN' && member.role !== 'ADMIN' && (
+                                                    <button 
+                                                        onClick={() => handleDeleteMember(member.id, member.name)}
+                                                        style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', background: 'transparent', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '0.4rem', cursor: 'pointer' }}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>

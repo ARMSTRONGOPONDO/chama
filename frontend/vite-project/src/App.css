@@ -218,6 +218,98 @@ button[type="submit"] {
 	border: 1px solid #e5e7eb;
 }
 
+/* Custom Calendar Styles */
+.custom-calendar {
+    background: white;
+    border: 1px solid var(--color-border-soft);
+    border-radius: 1rem;
+    padding: 1rem;
+    width: 100%;
+    max-width: 320px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.current-month {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.95rem;
+}
+
+.nav-btn {
+    background: #f1f5f9;
+    border: none;
+    color: var(--color-primary);
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.weekday-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #94a3b8;
+    text-align: center;
+    padding-bottom: 0.5rem;
+    text-transform: uppercase;
+}
+
+.calendar-cell {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    border-radius: 0.5rem;
+    position: relative;
+    color: #475569;
+}
+
+.calendar-cell.clickable {
+    cursor: pointer;
+}
+
+.calendar-cell.clickable:hover {
+    background-color: #f8fafc;
+}
+
+.calendar-cell.selected {
+    background-color: var(--color-primary) !important;
+    color: white !important;
+    font-weight: 700;
+}
+
+.indicator-dot {
+    width: 4px;
+    height: 4px;
+    background-color: var(--color-primary);
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+}
+
+.calendar-cell.selected .indicator-dot {
+    background-color: white;
+}
+
 @media (max-width: 768px) {
 	.app-shell {
 		grid-template-columns: 1fr;

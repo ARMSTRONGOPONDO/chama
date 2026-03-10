@@ -47,7 +47,18 @@ function App() {
 	})
 	const [loans, setLoans] = useState<Loan[]>([])
 	const [isLoansLoading, setIsLoansLoading] = useState(false)
-	const [currentUser, setCurrentUser] = useState<Member | null>(null);
+	const [currentUser, setCurrentUser] = useState<Member | null>(() => {
+		const saved = localStorage.getItem('chama_user');
+		return saved ? JSON.parse(saved) : null;
+	});
+
+	useEffect(() => {
+		if (currentUser) {
+			localStorage.setItem('chama_user', JSON.stringify(currentUser));
+		} else {
+			localStorage.removeItem('chama_user');
+		}
+	}, [currentUser]);
 
 	const refreshMembers = useCallback(async () => {
 		try {
