@@ -8,46 +8,7 @@ import { Savings } from './components/Savings';
 import { Loans } from './components/Loans';
 import { Groups } from './components/Groups';
 import { Login } from './components/Login';
-
-type Member = {
-  id: string
-  memberNumber: string
-  name: string
-  email: string | null
-  phone: string
-  nationalId: string
-  role: string
-}
-
-type SavingSummary = {
-  totalGroupSavings: string
-  members: {
-    id: string
-    name: string
-    memberNumber: string
-    totalSaved: string
-  }[]
-}
-
-type LoanType = 'SHORT_TERM' | 'SIX_MONTH'
-
-type Loan = {
-	id: string
-	member: { id: string; name: string; memberNumber: string }
-	principal: string
-	interestAmount: string
-	monthlyInstallment: string
-	termMonths: number
-	purpose: string
-	status: string
-	type: LoanType
-	issuedAt: string
-	dueDate: string
-	guarantors: { id: string; name: string; memberNumber: string }[]
-	repayments: { id: string; amount: string; paidAt: string; note: string | null }[]
-	totalRepaid: string
-	outstanding: string
-}
+import type { Member, MemberForm, SavingSummary, LoanType, Loan } from './types';
 
 function App() {
 	const [members, setMembers] = useState<Member[]>([])
@@ -55,7 +16,7 @@ function App() {
 	const [alert, setAlert] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
 	const [activeSection, setActiveSection] = useState<'overview' | 'members' | 'savings' | 'loans' | 'groups'>('overview')
-  const [memberForm, setMemberForm] = useState({
+  const [memberForm, setMemberForm] = useState<MemberForm>({
     name: '',
     email: '',
     phone: '',
@@ -381,14 +342,13 @@ function App() {
 				{alert && <div className="alert">{alert}</div>}
 
 				{activeSection === 'overview' && (
-					<Overview members={members} summary={summary} isLoading={isLoading} alert={alert} />
+					<Overview members={members} summary={summary} isLoading={isLoading} />
 				)}
 
 				{activeSection === 'members' && (
 					<Members
 						members={members}
 						isLoading={isLoading}
-						alert={alert}
 						memberForm={memberForm}
 						setMemberForm={setMemberForm}
 						handleMemberSubmit={handleMemberSubmit}
@@ -412,7 +372,6 @@ function App() {
 						loanForm={loanForm}
 						setLoanForm={setLoanForm}
 						handleLoanSubmit={handleLoanSubmit}
-						alert={alert}
 						refreshLoans={refreshLoans}
 						currentUser={currentUser}
 						setAlert={setAlert}
@@ -420,7 +379,7 @@ function App() {
 				)}
 
 				{activeSection === 'groups' && (
-					<Groups members={members} alert={alert} currentUser={currentUser} setAlert={setAlert} />
+					<Groups members={members} currentUser={currentUser} setAlert={setAlert} />
 				)}
 			</div>
 		</div>

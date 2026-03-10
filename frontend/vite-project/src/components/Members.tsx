@@ -1,30 +1,8 @@
-import { useState } from 'react';
-import { API_BASE } from '../config';
-
-type Member = {
-    id: string;
-    memberNumber: string;
-    name: string;
-    email?: string | null;
-    phone: string;
-    nationalId: string;
-    role: string;
-}
-
-type MemberForm = {
-    name: string;
-    email: string;
-    phone: string;
-    nationalId: string;
-    dateJoined: string;
-    memberNumber: string;
-    role: string;
-}
+import type { Member, MemberForm } from '../types';
 
 type MembersProps = {
     members: Member[];
     isLoading: boolean;
-    alert: string | null;
     memberForm: MemberForm;
     setMemberForm: React.Dispatch<React.SetStateAction<MemberForm>>;
     handleMemberSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;

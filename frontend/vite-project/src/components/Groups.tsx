@@ -1,11 +1,6 @@
 import { useState, useEffect } from 'react';
 import { API_BASE } from '../config';
-
-type Member = {
-    id: string;
-    name: string;
-    memberNumber: string;
-}
+import type { Member } from '../types';
 
 type Group = {
     id: string;
@@ -25,17 +20,16 @@ type GroupForm = {
 
 type GroupsProps = {
     members: Member[];
-    alert: string | null;
-    currentUser: Member | null; // New prop for current user
-    setAlert: React.Dispatch<React.SetStateAction<string | null>>; // New prop for setAlert
+    currentUser: Member | null;
+    setAlert: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-export function Groups({ members, alert, currentUser, setAlert }: GroupsProps) {
+export function Groups({ members, currentUser, setAlert }: GroupsProps) {
     const [groups, setGroups] = useState<Group[]>([]);
     const [groupForm, setGroupForm] = useState<GroupForm>({
         name: '',
         description: '',
-        createdById: currentUser?.id || '', // Use currentUser.id
+        createdById: currentUser?.id || '',
         memberIds: [],
     });
     const [isLoading, setIsLoading] = useState(false);
@@ -45,7 +39,7 @@ export function Groups({ members, alert, currentUser, setAlert }: GroupsProps) {
             setIsLoading(true);
             const response = await fetch(`${API_BASE}/api/groups`, {
                 headers: {
-                    'Authorization': `Bearer ${currentUser?.id}`, // Send token for fetching groups
+                    'Authorization': `Bearer ${currentUser?.id}`,
                 },
             });
             if (!response.ok) {
@@ -55,28 +49,24 @@ export function Groups({ members, alert, currentUser, setAlert }: GroupsProps) {
             setGroups(data);
         } catch (error) {
             console.error(error);
-            setAlert('Unable to load groups.'); // Use setAlert for error
+            setAlert('Unable to load groups.');
         } finally {
             setIsLoading(false);
         }
     };
 
     useEffect(() => {
-        console.log("Groups component useEffect - currentUser:", currentUser);
-        if (currentUser) { // Only fetch groups if a user is logged in
+        if (currentUser) {
             refreshGroups();
         }
-    }, [currentUser]); // Re-fetch when currentUser changes
+    }, [currentUser]);
 
     const handleGroupSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        console.log("handleGroupSubmit - currentUser:", currentUser);
-        console.log("handleGroupSubmit - groupForm:", groupForm);
-        setAlert(null); // Clear previous alerts
+        setAlert(null);
 
         if (!currentUser || currentUser.role !== 'ADMIN') {
-            console.warn("Group creation prevented: User is not an ADMIN or not logged in.");
-            setAlert('Only admins can create groups.'); // Use setAlert
+            setAlert('Only admins can create groups.');
             return;
         }
 
@@ -90,13 +80,12 @@ export function Groups({ members, alert, currentUser, setAlert }: GroupsProps) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${currentUser.id}`, // Send token for creating group
+                    'Authorization': `Bearer ${currentUser.id}`,
                 },
                 body: JSON.stringify(body),
             });
 
             if (!response.ok) {
-                console.error("Group creation failed with response status:", response.status);
                 let message = 'Unable to create group.';
                 try {
                     const data = (await response.json()) as {
@@ -117,17 +106,16 @@ export function Groups({ members, alert, currentUser, setAlert }: GroupsProps) {
                 } catch (parseError) {
                     console.error('Failed to parse group creation error response', parseError);
                 }
-                setAlert(message); // Use setAlert
+                setAlert(message);
                 return;
             }
 
             setGroupForm({ name: '', description: '', createdById: currentUser.id, memberIds: [] });
             refreshGroups();
-            console.log("Group created successfully.");
-            setAlert('Group created successfully.'); // Use setAlert
+            setAlert('Group created successfully.');
         } catch (error) {
-            console.error("Error during group creation:", error);
-            setAlert('Failed to create group.'); // Use setAlert
+            console.error(error);
+            setAlert('Failed to create group.');
         }
     };
 
@@ -206,7 +194,6 @@ export function Groups({ members, alert, currentUser, setAlert }: GroupsProps) {
             <article className="card form-card">
                 <h3>Add/Remove Members from Group</h3>
                 <p className="muted">Select a group and then select members to add/remove.</p>
-                {/* Simplified for now, this would ideally have group selection and member selection UI */}
                 <h4>Select Members:</h4>
                 <div className="member-list guarantor-list">
                     {members.map((member) => {
@@ -231,8 +218,6 @@ export function Groups({ members, alert, currentUser, setAlert }: GroupsProps) {
                         );
                     })}
                 </div>
-                {/* This button would apply changes to a selected group */}
-                {/* <button type="button" onClick={handleUpdateGroupMembers}>Update Group Members</button> */}
             </article>
         </section>
     );

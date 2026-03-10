@@ -1,36 +1,14 @@
-import { useState, useEffect } from 'react';
-import { API_BASE } from '../config';
-
-type SavingSummary = {
-  totalGroupSavings: string
-  members: {
-    id: string
-    name: string
-    memberNumber: string
-    totalSaved: string
-  }[]
-}
-
-type Member = {
-    id: string;
-    name: string;
-    memberNumber: string;
-    phone: string;
-    nationalId: string;
-    role: string;
-}
+import type { Member, SavingSummary } from '../types';
 
 type OverviewProps = {
     members: Member[];
     summary: SavingSummary | null;
     isLoading: boolean;
-    alert: string | null;
 }
 
-export function Overview({ members, summary, isLoading, alert }: OverviewProps) {
+export function Overview({ members, summary, isLoading }: OverviewProps) {
     return (
         <>
-            {alert && <div className="alert">{alert}</div>}
             <section className="summary-grid">
                 <article className="card">
                     <header>

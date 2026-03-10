@@ -1,42 +1,5 @@
-import { useState } from 'react';
 import { API_BASE } from '../config';
-
-type Member = {
-    id: string;
-    name: string;
-    memberNumber: string;
-}
-
-type LoanType = 'SHORT_TERM' | 'SIX_MONTH';
-
-type Loan = {
-    id: string;
-    member: { id: string; name: string; memberNumber: string };
-    principal: string;
-    interestAmount: string;
-    monthlyInstallment: string;
-    termMonths: number;
-    purpose: string;
-    status: string;
-    type: LoanType;
-    issuedAt: string;
-    dueDate: string;
-    guarantors: { id: string; name: string; memberNumber: string }[];
-    repayments: { id: string; amount: string; paidAt: string; note: string | null }[];
-    totalRepaid: string;
-    outstanding: string;
-    officer?: { id: string; name: string; memberNumber: string };
-    verifiedBy?: { id: string; name: string; memberNumber: string };
-    approvedBy?: { id: string; name: string; memberNumber: string };
-};
-
-type LoanForm = {
-    memberId: string;
-    principal: string;
-    purpose: string;
-    type: LoanType;
-    guarantorIds: string[];
-};
+import type { Member, Loan, LoanForm } from '../types';
 
 type LoansProps = {
     members: Member[];
@@ -45,7 +8,6 @@ type LoansProps = {
     loanForm: LoanForm;
     setLoanForm: React.Dispatch<React.SetStateAction<LoanForm>>;
     handleLoanSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
-    alert: string | null;
     refreshLoans: () => Promise<void>;
     currentUser: Member | null;
     setAlert: React.Dispatch<React.SetStateAction<string | null>>;
@@ -58,7 +20,6 @@ export function Loans({
     loanForm,
     setLoanForm,
     handleLoanSubmit,
-    alert,
     refreshLoans,
     currentUser,
     setAlert,
@@ -177,7 +138,7 @@ export function Loans({
                                 onChange={(event) =>
                                     setLoanForm((prev) => ({
                                         ...prev,
-                                        type: event.target.value as LoanType,
+                                        type: event.target.value as any,
                                         guarantorIds: event.target.value === 'SIX_MONTH' ? prev.guarantorIds : [],
                                     }))
                                 }

@@ -1,11 +1,4 @@
-import { useState } from 'react';
-import { API_BASE } from '../config';
-
-type Member = {
-    id: string;
-    name: string;
-    memberNumber: string;
-}
+import type { Member } from '../types';
 
 type SavingForm = {
     memberId: string;
