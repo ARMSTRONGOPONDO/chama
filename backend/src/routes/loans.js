@@ -42,6 +42,7 @@ const baseLoanSchema = z.object({
 	principal: z.preprocess((val) => Number(val), z.number().positive()),
 	purpose: z.string().min(3),
 	interestRate: z.preprocess((val) => (val ? Number(val) : undefined), z.number().positive().optional()),
+	dailyRepaymentAmount: z.preprocess((val) => (val ? Number(val) : undefined), z.number().positive().optional()),
 });
 
 const shortTermLoanSchema = baseLoanSchema.extend({
@@ -63,14 +64,16 @@ router.get("/", async (req, res) => {
 		const loans = await prisma.loan.findMany({
 			include: {
 				member: {
-					select: { id: true, name: true, memberNumber: true },
+					select: { id: true, name: true, memberNumber: true, accountNumber: true },
 				},
 				guarantors: {
 					include: {
 						member: { select: { id: true, name: true, memberNumber: true } },
 					},
 				},
-				repayments: true,
+				repayments: {
+					orderBy: { paidAt: "desc" }
+				},
 				documents: true,
 				officer: { select: { id: true, name: true, memberNumber: true } },
 				verifiedBy: { select: { id: true, name: true, memberNumber: true } },
@@ -92,6 +95,8 @@ router.get("/", async (req, res) => {
 				principal: principalNum.toFixed(2),
 				interestAmount: interestNum.toFixed(2),
 				interestRate: Number(loan.interestRate ?? 0).toFixed(2),
+				totalDue: totalDue.toFixed(2),
+				dailyRepaymentAmount: Number(loan.dailyRepaymentAmount ?? 0).toFixed(2),
 				monthlyInstallment: Number(loan.monthlyInstallment ?? 0).toFixed(2),
 				termMonths: loan.termMonths,
 				purpose: loan.purpose,
@@ -104,6 +109,7 @@ router.get("/", async (req, res) => {
 				documents: loan.documents,
 				totalRepaid: totalRepaid.toFixed(2),
 				outstanding: outstanding.toFixed(2),
+				repaymentProgress: totalDue > 0 ? ((totalRepaid / totalDue) * 100).toFixed(1) : "0.0",
 				officer: loan.officer,
 				verifiedBy: loan.verifiedBy,
 				approvedBy: loan.approvedBy,
@@ -124,12 +130,16 @@ router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (re
 			return res.status(400).json({ errors: parsed.error.errors });
 		}
 
-		const { memberId, principal, purpose, type, interestRate: customRate } = parsed.data;
+		const { memberId, principal, purpose, type, interestRate: customRate, dailyRepaymentAmount: customDaily } = parsed.data;
 
 		const interestRate = customRate ?? (type === "SHORT_TERM" ? 10 : 12);
 		const termMonths = type === "SHORT_TERM" ? 1 : 6;
 		const interestAmount = (Number(principal) * interestRate) / 100;
-		const monthlyInstallment = (Number(principal) + interestAmount) / termMonths;
+		const totalDue = Number(principal) + interestAmount;
+		const monthlyInstallment = totalDue / termMonths;
+		
+		// Auto-calculate daily if not provided (assuming 30 days per month)
+		const dailyRepaymentAmount = customDaily ?? (totalDue / (termMonths * 30));
 
 		const issuedAt = new Date();
 		const dueDate = new Date(issuedAt);
@@ -147,6 +157,7 @@ router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (re
 					interestRate,
 					interestAmount: interestAmount.toFixed(2),
 					monthlyInstallment: monthlyInstallment.toFixed(2),
+					dailyRepaymentAmount: dailyRepaymentAmount.toFixed(2),
 					termMonths,
 					purpose,
 					type,
@@ -188,6 +199,56 @@ router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (re
 	} catch (error) {
 		console.error("Failed to create loan", error);
 		res.status(500).json({ error: "Unable to create loan" });
+	}
+});
+
+// Record a repayment
+router.post("/:id/repayments", async (req, res) => {
+	const { id } = req.params;
+	const { amount, note } = req.body;
+
+	if (!amount || Number(amount) <= 0) {
+		return res.status(400).json({ error: "Invalid repayment amount" });
+	}
+
+	try {
+		const loan = await prisma.loan.findUnique({
+			where: { id },
+			include: { repayments: true }
+		});
+
+		if (!loan) return res.status(404).json({ error: "Loan not found" });
+
+		const totalRepaidBefore = loan.repayments.reduce((sum, r) => sum + Number(r.amount), 0);
+		const totalDue = Number(loan.principal) + Number(loan.interestAmount);
+		const amountNum = Number(amount);
+		const remainingBalance = Math.max(totalDue - (totalRepaidBefore + amountNum), 0);
+
+		const repayment = await prisma.$transaction(async (tx) => {
+			const r = await tx.repayment.create({
+				data: {
+					loanId: id,
+					amount: amountNum.toFixed(2),
+					remainingBalance: remainingBalance.toFixed(2),
+					note: note || `Daily repayment`
+				}
+			});
+
+			// If fully repaid, update status
+			if (remainingBalance <= 0) {
+				await tx.loan.update({
+					where: { id },
+					data: { status: "PAID" }
+				});
+			}
+
+			return r;
+		});
+
+		res.status(201).json(repayment);
+	} catch (error) {
+		console.error("Repayment error:", error);
+		res.status(500).json({ error: "Failed to record repayment" });
 	}
 });
 

@@ -7,6 +7,8 @@ import { Members } from './components/Members';
 import { Savings } from './components/Savings';
 import { Loans } from './components/Loans';
 import { Groups } from './components/Groups';
+import { Repayments } from './components/Repayments';
+import { Settings } from './components/Settings';
 import { Login } from './components/Login';
 import type { Member, MemberForm, SavingSummary, Loan, LoanForm } from './types';
 
@@ -23,8 +25,9 @@ function App() {
 			return () => clearTimeout(timer);
 		}
 	}, [alert]);
+
 	const [isLoading, setIsLoading] = useState(false)
-	const [activeSection, setActiveSection] = useState<'overview' | 'members' | 'savings' | 'loans' | 'groups'>('overview')
+	const [activeSection, setActiveSection] = useState<'overview' | 'members' | 'savings' | 'loans' | 'groups' | 'repayments' | 'settings'>('overview')
   const [memberForm, setMemberForm] = useState<MemberForm>({
     name: '',
     email: '',
@@ -53,7 +56,7 @@ function App() {
 			setMembers(data)
 			if (data.length > 0) {
 				if (!loanForm.memberId) {
-					setLoanForm((prev: LoanForm) => ({ ...prev, memberId: data[0].id }))
+					setLoanForm((prev) => ({ ...prev, memberId: data[0].id }))
 				}
 			}
 		} catch (error) {
@@ -209,8 +212,11 @@ function App() {
 			formData.append('purpose', loanForm.purpose);
 			formData.append('type', loanForm.type);
 			
-			if ((loanForm as any).interestRate) {
-				formData.append('interestRate', (loanForm as any).interestRate);
+			if (loanForm.interestRate) {
+				formData.append('interestRate', loanForm.interestRate);
+			}
+			if (loanForm.dailyRepaymentAmount) {
+				formData.append('dailyRepaymentAmount', loanForm.dailyRepaymentAmount);
 			}
 
 			if (loanForm.type === 'SIX_MONTH') {
@@ -265,7 +271,7 @@ function App() {
 		}
 	}
 
-	const handleSectionClick = (section: 'overview' | 'members' | 'savings' | 'loans' | 'groups') => {
+	const handleSectionClick = (section: any) => {
 		setActiveSection(section)
 	}
 
@@ -312,6 +318,20 @@ function App() {
 						onClick={() => handleSectionClick('groups')}
 					>
 						Groups
+					</button>
+					<button
+						type="button"
+						className={`sidebar-link ${activeSection === 'repayments' ? 'active' : ''}`}
+						onClick={() => handleSectionClick('repayments')}
+					>
+						Repayments
+					</button>
+					<button
+						type="button"
+						className={`sidebar-link ${activeSection === 'settings' ? 'active' : ''}`}
+						onClick={() => handleSectionClick('settings')}
+					>
+						Settings
 					</button>
 				</nav>
 			</aside>
@@ -374,6 +394,25 @@ function App() {
 
 				{activeSection === 'groups' && (
 					<Groups members={members} currentUser={currentUser} setAlert={setAlert} />
+				)}
+
+				{activeSection === 'repayments' && (
+					<Repayments 
+						loans={loans}
+						isLoansLoading={isLoansLoading}
+						currentUser={currentUser}
+						refreshLoans={refreshLoans}
+						setAlert={setAlert}
+					/>
+				)}
+
+				{activeSection === 'settings' && (
+					<Settings 
+						members={members}
+						currentUser={currentUser}
+						refreshMembers={refreshMembers}
+						setAlert={setAlert}
+					/>
 				)}
 			</div>
 		</div>

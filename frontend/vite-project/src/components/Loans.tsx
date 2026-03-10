@@ -119,9 +119,9 @@ export function Loans({
                             ))}
                         </select>
                     </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                         <label>
-                            Principal amount
+                            Principal (KSh)
                             <input
                                 type="number"
                                 min="0"
@@ -137,9 +137,20 @@ export function Loans({
                                 type="number"
                                 min="0"
                                 step="0.1"
-                                value={(loanForm as any).interestRate || ''}
-                                placeholder="Default (10% or 12%)"
+                                value={loanForm.interestRate || ''}
+                                placeholder="Default (10%/12%)"
                                 onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLoanForm((prev: any) => ({ ...prev, interestRate: event.target.value }))}
+                            />
+                        </label>
+                        <label>
+                            Daily Repay (KSh)
+                            <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={loanForm.dailyRepaymentAmount || ''}
+                                placeholder="Auto-calculated"
+                                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLoanForm((prev: any) => ({ ...prev, dailyRepaymentAmount: event.target.value }))}
                             />
                         </label>
                     </div>
@@ -263,14 +274,14 @@ export function Loans({
                                         </td>
                                         <td style={{ padding: '0.75rem' }}>
                                             <div style={{ fontWeight: 700 }}>KSh {loan.principal}</div>
-                                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Rate: {loan.interestRate}%</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Rate: {loan.interestRate}% | Daily: KSh {loan.dailyRepaymentAmount}</div>
                                             <div style={{ fontSize: '0.75rem', color: '#dc2626' }}>O/S: KSh {loan.outstanding}</div>
                                         </td>
                                         <td style={{ padding: '0.75rem' }}>
                                             <div style={{ marginBottom: '0.25rem' }}>
                                                 <span className="loan-pill" style={{ 
-                                                    backgroundColor: loan.status === 'APPROVED' ? '#dcfce7' : loan.status === 'REJECTED' ? '#fee2e2' : '#fef9c3',
-                                                    color: loan.status === 'APPROVED' ? '#166534' : loan.status === 'REJECTED' ? '#991b1b' : '#854d0e',
+                                                    backgroundColor: loan.status === 'APPROVED' ? '#dcfce7' : loan.status === 'PAID' ? '#eff6ff' : loan.status === 'REJECTED' ? '#fee2e2' : '#fef9c3',
+                                                    color: loan.status === 'APPROVED' ? '#166534' : loan.status === 'PAID' ? '#1e40af' : loan.status === 'REJECTED' ? '#991b1b' : '#854d0e',
                                                     borderColor: 'transparent'
                                                 }}>
                                                     {loan.status}

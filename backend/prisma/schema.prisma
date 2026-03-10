@@ -15,7 +15,7 @@ datasource db {
 model Member {
   id                   String        @id @default(cuid())
   memberNumber         String        @unique
-  accountNumber        String?       @unique
+  accountNumber        String        @unique
   name                 String
   email                String?       @unique
   password             String        @default("temp") // Hashed password
@@ -54,6 +54,7 @@ model Loan {
   interestRate         Decimal       @db.Decimal(5, 2)
   interestAmount       Decimal       @db.Decimal(12, 2)
   monthlyInstallment   Decimal       @db.Decimal(12, 2)
+  dailyRepaymentAmount Decimal       @db.Decimal(12, 2) @default(0)
   termMonths           Int
   purpose              String
   issuedAt             DateTime      @default(now())
@@ -74,12 +75,13 @@ model Loan {
 }
 
 model Repayment {
-  id        String   @id @default(cuid())
-  loan      Loan     @relation(fields: [loanId], references: [id])
-  loanId    String
-  amount    Decimal  @db.Decimal(12, 2)
-  paidAt    DateTime @default(now())
-  note      String?
+  id               String   @id @default(cuid())
+  loan             Loan     @relation(fields: [loanId], references: [id])
+  loanId           String
+  amount           Decimal  @db.Decimal(12, 2)
+  remainingBalance Decimal  @db.Decimal(12, 2)
+  paidAt           DateTime @default(now())
+  note             String?
 }
 
 model LoanGuarantor {

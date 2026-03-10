@@ -83,6 +83,50 @@ router.put("/:id/role", requireRole("ADMIN"), async (req, res) => {
   }
 });
 
+// Update member profile (Admin only)
+router.put("/:id", requireRole("ADMIN"), async (req, res) => {
+  const { id } = req.params;
+  const { name, email, phone, nationalId, role } = req.body;
+
+  try {
+    const updated = await prisma.member.update({
+      where: { id },
+      data: { name, email, phone, nationalId, role }
+    });
+    res.json(updated);
+  } catch (error) {
+    console.error("Member update error:", error);
+    res.status(500).json({ error: "Failed to update member details" });
+  }
+});
+
+// Change password (User or Admin)
+router.put("/:id/password", async (req, res) => {
+  const { id } = req.params;
+  const { password } = req.body;
+
+  // Security: only self or admin
+  if (req.user.id !== id && req.user.role !== 'ADMIN') {
+    return res.status(403).json({ error: "Unauthorized to change this password" });
+  }
+
+  if (!password || password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters" });
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await prisma.member.update({
+      where: { id },
+      data: { password: hashedPassword }
+    });
+    res.json({ message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Password update error:", error);
+    res.status(500).json({ error: "Failed to update password" });
+  }
+});
+
 router.get("/", async (req, res) => {
   const members = await prisma.member.findMany({
     include: { savings: true, loans: true },

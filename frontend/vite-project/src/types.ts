@@ -41,12 +41,23 @@ export type LoanDocument = {
   createdAt: string;
 }
 
+export type Repayment = {
+	id: string;
+	loanId: string;
+	amount: string;
+	remainingBalance: string;
+	paidAt: string;
+	note: string | null;
+}
+
 export type Loan = {
 	id: string
-	member: { id: string; name: string; memberNumber: string }
+	member: { id: string; name: string; memberNumber: string; accountNumber: string }
 	principal: string
 	interestRate: string
 	interestAmount: string
+	totalDue: string;
+	dailyRepaymentAmount: string;
 	monthlyInstallment: string
 	termMonths: number
 	purpose: string
@@ -55,9 +66,10 @@ export type Loan = {
 	issuedAt: string
 	dueDate: string
 	guarantors: { id: string; name: string; memberNumber: string }[]
-	repayments: { id: string; amount: string; paidAt: string; note: string | null }[]
+	repayments: Repayment[]
 	totalRepaid: string
 	outstanding: string
+	repaymentProgress: string;
 	documents: LoanDocument[];
 	officer?: { id: string; name: string; memberNumber: string };
 	verifiedBy?: { id: string; name: string; memberNumber: string };
@@ -70,6 +82,8 @@ export type LoanForm = {
     purpose: string;
     type: LoanType;
     guarantorIds: string[];
+    interestRate?: string;
+    dailyRepaymentAmount?: string;
     documents?: FileList | null;
 }
 
