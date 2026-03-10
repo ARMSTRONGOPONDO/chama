@@ -26,11 +26,11 @@ function App() {
     role: 'MEMBER',
   })
   const [savingForm, setSavingForm] = useState({ memberId: '', amount: '', month: '', note: '' })
-	const [loanForm, setLoanForm] = useState({
+	const [loanForm, setLoanForm] = useState<any>({
 		memberId: '',
 		principal: '',
 		purpose: '',
-		type: 'SHORT_TERM' as LoanType,
+		type: 'SHORT_TERM',
 		guarantorIds: [] as string[],
 	})
 	const [loans, setLoans] = useState<Loan[]>([])
@@ -47,7 +47,7 @@ function App() {
 					setSavingForm((prev) => ({ ...prev, memberId: data[0].id }))
 				}
 				if (!loanForm.memberId) {
-					setLoanForm((prev) => ({ ...prev, memberId: data[0].id }))
+					setLoanForm((prev: any) => ({ ...prev, memberId: data[0].id }))
 				}
 			}
 		} catch (error) {
@@ -264,7 +264,7 @@ function App() {
 				return
 			}
 
-			setLoanForm((prev) => ({ ...prev, principal: '', purpose: '', guarantorIds: [] }))
+			setLoanForm((prev: any) => ({ ...prev, principal: '', purpose: '', guarantorIds: [] }))
 			await refreshLoans()
 			setAlert('Loan created successfully.')
 		} catch (error) {
@@ -284,7 +284,7 @@ function App() {
 	return (
 		<div className="app-shell">
 			<aside className="sidebar">
-				<div className="sidebar-title">Chama Manager</div>
+				<div className="sidebar-title">STEVEN CHAMA PROJECT</div>
 				<nav className="sidebar-nav">
 					<button
 						type="button"
@@ -352,6 +352,9 @@ function App() {
 						memberForm={memberForm}
 						setMemberForm={setMemberForm}
 						handleMemberSubmit={handleMemberSubmit}
+						currentUser={currentUser}
+						refreshMembers={refreshMembers}
+						setAlert={setAlert}
 					/>
 				)}
 

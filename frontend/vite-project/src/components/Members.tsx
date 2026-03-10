@@ -1,4 +1,5 @@
 import type { Member, MemberForm } from '../types';
+import { API_BASE } from '../config';
 
 type MembersProps = {
     members: Member[];
@@ -6,9 +7,55 @@ type MembersProps = {
     memberForm: MemberForm;
     setMemberForm: React.Dispatch<React.SetStateAction<MemberForm>>;
     handleMemberSubmit: (event: React.FormEvent<HTMLFormElement>) => Promise<void>;
+    currentUser: Member | null;
+    refreshMembers: () => Promise<void>;
+    setAlert: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
-export function Members({ members, isLoading, memberForm, setMemberForm, handleMemberSubmit }: MembersProps) {
+export function Members({ 
+    members, 
+    isLoading, 
+    memberForm, 
+    setMemberForm, 
+    handleMemberSubmit, 
+    currentUser, 
+    refreshMembers,
+    setAlert 
+}: MembersProps) {
+
+    const handleDeleteMember = async (memberId: string, memberName: string) => {
+        if (!window.confirm(`Are you sure you want to delete ${memberName}? This action cannot be undone.`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE}/api/members/${memberId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${currentUser?.id}`
+                }
+            });
+
+            if (!response.ok) {
+                let errorMessage = 'Failed to delete member.';
+                try {
+                    const data = await response.json();
+                    errorMessage = data.error || errorMessage;
+                } catch (e) {
+                    // Response is not JSON (e.g. 404 Not Found)
+                    errorMessage = `Error ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
+            }
+
+            setAlert('Member deleted successfully.');
+            refreshMembers();
+        } catch (error: any) {
+            console.error('Delete error:', error);
+            setAlert(error.message || 'Failed to delete member.');
+        }
+    };
+
     return (
         <section className="form-grid">
             <article className="card form-card">
@@ -104,9 +151,19 @@ export function Members({ members, isLoading, memberForm, setMemberForm, handleM
                                         <span className="member-list-number">{member.memberNumber}</span>
                                         <div style={{ fontSize: '0.7rem', color: '#888' }}>ID: {member.id}</div>
                                     </div>
-                                    <div className="member-list-meta">
+                                    <div className="member-list-meta" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                                         <span>{member.email || 'No email'}</span>
                                         <span>{member.phone}</span>
+                                        
+                                        {currentUser?.role === 'ADMIN' && member.role !== 'ADMIN' && (
+                                            <button 
+                                                className="delete-btn" 
+                                                onClick={() => handleDeleteMember(member.id, member.name)}
+                                                style={{ marginTop: '0.5rem', padding: '0.2rem 0.5rem', fontSize: '0.7rem', background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: '0.25rem', cursor: 'pointer' }}
+                                            >
+                                                Delete Member
+                                            </button>
+                                        )}
                                     </div>
                                 </li>
                             );

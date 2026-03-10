@@ -70,4 +70,29 @@ router.get("/", async (req, res) => {
   res.json(members);
 });
 
+router.delete("/:id", requireRole("ADMIN"), async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const member = await prisma.member.findUnique({ where: { id } });
+
+    if (!member) {
+      return res.status(404).json({ error: "Member not found." });
+    }
+
+    if (member.role === "ADMIN") {
+      return res.status(403).json({ error: "Protection: Admin accounts cannot be deleted." });
+    }
+
+    await prisma.member.delete({
+      where: { id },
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error("Failed to delete member:", error);
+    res.status(500).json({ error: "Unable to delete member. They may have active loans or savings records." });
+  }
+});
+
 module.exports = router;

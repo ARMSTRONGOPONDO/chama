@@ -1,4 +1,4 @@
-export interface Member {
+export type Member = {
   id: string
   memberNumber: string
   name: string
@@ -8,7 +8,7 @@ export interface Member {
   role: string
 }
 
-export interface MemberForm {
+export type MemberForm = {
   name: string;
   email: string;
   phone: string;
@@ -18,7 +18,7 @@ export interface MemberForm {
   role: string;
 }
 
-export interface SavingSummary {
+export type SavingSummary = {
   totalGroupSavings: string
   members: {
     id: string
@@ -30,7 +30,7 @@ export interface SavingSummary {
 
 export type LoanType = 'SHORT_TERM' | 'SIX_MONTH'
 
-export interface Loan {
+export type Loan = {
 	id: string
 	member: { id: string; name: string; memberNumber: string }
 	principal: string
@@ -51,7 +51,7 @@ export interface Loan {
 	approvedBy?: { id: string; name: string; memberNumber: string };
 }
 
-export interface LoanForm {
+export type LoanForm = {
     memberId: string;
     principal: string;
     purpose: string;
@@ -59,5 +59,5 @@ export interface LoanForm {
     guarantorIds: string[];
 }
 
-// Dummy constant to ensure the module is treated as a runtime module by Vite/ESM
-export const VERSION = '1.0.0';
+// Runtime export to ensure Vite treats this as a module
+export const APP_VERSION = '1.0.0';
