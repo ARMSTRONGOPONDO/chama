@@ -98,7 +98,7 @@ export function Loans({
                             Member
                             <select
                                 value={loanForm.memberId}
-                                onChange={(event) => setLoanForm((prev) => ({ ...prev, memberId: event.target.value }))}
+                                onChange={(event: React.ChangeEvent<HTMLSelectElement>) => setLoanForm((prev: LoanForm) => ({ ...prev, memberId: event.target.value }))}
                                 required
                             >
                                 <option value="" disabled>
@@ -118,7 +118,7 @@ export function Loans({
                                 min="0"
                                 step="0.01"
                                 value={loanForm.principal}
-                                onChange={(event) => setLoanForm((prev) => ({ ...prev, principal: event.target.value }))}
+                                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLoanForm((prev: LoanForm) => ({ ...prev, principal: event.target.value }))}
                                 required
                             />
                         </label>
@@ -126,7 +126,7 @@ export function Loans({
                             Purpose
                             <input
                                 value={loanForm.purpose}
-                                onChange={(event) => setLoanForm((prev) => ({ ...prev, purpose: event.target.value }))}
+                                onChange={(event: React.ChangeEvent<HTMLInputElement>) => setLoanForm((prev: LoanForm) => ({ ...prev, purpose: event.target.value }))}
                                 required
                                 minLength={3}
                             />
@@ -135,8 +135,8 @@ export function Loans({
                             Loan type
                             <select
                                 value={loanForm.type}
-                                onChange={(event) =>
-                                    setLoanForm((prev) => ({
+                                onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
+                                    setLoanForm((prev: LoanForm) => ({
                                         ...prev,
                                         type: event.target.value as any,
                                         guarantorIds: event.target.value === 'SIX_MONTH' ? prev.guarantorIds : [],
@@ -169,12 +169,12 @@ export function Loans({
                                             type="button"
                                             className={`member-list-item ${isSelected ? 'active' : ''}`}
                                             onClick={() => {
-                                                setLoanForm((prev) => {
+                                                setLoanForm((prev: LoanForm) => {
                                                     const alreadySelected = prev.guarantorIds.includes(member.id);
                                                     return {
                                                         ...prev,
                                                         guarantorIds: alreadySelected
-                                                            ? prev.guarantorIds.filter((id) => id !== member.id)
+                                                            ? prev.guarantorIds.filter((id: string) => id !== member.id)
                                                             : [...prev.guarantorIds, member.id],
                                                     };
                                                 });

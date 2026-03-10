@@ -51,5 +51,13 @@ export interface Loan {
 	approvedBy?: { id: string; name: string; memberNumber: string };
 }
 
+export interface LoanForm {
+    memberId: string;
+    principal: string;
+    purpose: string;
+    type: LoanType;
+    guarantorIds: string[];
+}
+
 // Dummy constant to ensure the module is treated as a runtime module by Vite/ESM
 export const VERSION = '1.0.0';
