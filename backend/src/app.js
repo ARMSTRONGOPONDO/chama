@@ -18,6 +18,7 @@ app.use("/api/members", memberRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/savings", savingsRoutes);
 app.use("/api/loans", loanRoutes);
+app.use("/api/groups", require("./routes/groups"));
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });

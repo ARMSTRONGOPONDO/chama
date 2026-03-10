@@ -23,4 +23,19 @@ async function attachMember(req, _res, next) {
   return next();
 }
 
-module.exports = { attachMember };
+function requireRole(roles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ error: "Authentication required." });
+    }
+    const userRole = req.user.role;
+    const requiredRoles = Array.isArray(roles) ? roles : [roles];
+
+    if (!requiredRoles.includes(userRole)) {
+      return res.status(403).json({ error: "Forbidden: Insufficient role." });
+    }
+    next();
+  };
+}
+
+module.exports = { attachMember, requireRole };

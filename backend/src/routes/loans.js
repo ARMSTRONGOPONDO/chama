@@ -1,6 +1,7 @@
 const express = require("express");
 const { z } = require("zod");
 const { prisma } = require("../lib/prismaClient");
+const { requireRole } = require("../middleware/auth"); // Import requireRole
 
 const router = express.Router();
 
@@ -8,6 +9,7 @@ const baseLoanSchema = z.object({
 	memberId: z.string().min(1),
 	principal: z.preprocess((val) => Number(val), z.number().positive()),
 	purpose: z.string().min(3),
+	// officerId is set by the authenticated user, not passed in the body for creation
 });
 
 const shortTermLoanSchema = baseLoanSchema.extend({
@@ -34,6 +36,9 @@ router.get("/", async (req, res) => {
 					},
 				},
 				repayments: true,
+				officer: { select: { id: true, name: true, memberNumber: true } },
+				verifiedBy: { select: { id: true, name: true, memberNumber: true } },
+				approvedBy: { select: { id: true, name: true, memberNumber: true } },
 			},
 			orderBy: { issuedAt: "desc" },
 		});
@@ -61,6 +66,9 @@ router.get("/", async (req, res) => {
 				repayments: loan.repayments,
 				totalRepaid: totalRepaid.toFixed(2),
 				outstanding: outstanding.toFixed(2),
+				officer: loan.officer,
+				verifiedBy: loan.verifiedBy,
+				approvedBy: loan.approvedBy,
 			};
 		});
 
@@ -71,7 +79,7 @@ router.get("/", async (req, res) => {
 	}
 });
 
-router.post("/", async (req, res) => {
+router.post("/", requireRole("OFFICER"), async (req, res) => {
 	const parsed = createLoanSchema.safeParse(req.body);
 	if (!parsed.success) {
 		return res.status(400).json({ errors: parsed.error.errors });
@@ -109,6 +117,8 @@ router.post("/", async (req, res) => {
 					type,
 					issuedAt,
 					dueDate,
+					status: "PENDING",
+					officerId: req.user.id, // Assign officer from authenticated user
 				},
 			});
 
@@ -134,5 +144,60 @@ router.post("/", async (req, res) => {
 		res.status(500).json({ error: "Unable to create loan" });
 	}
 });
+
+router.put("/:id/verify", requireRole("VERIFIER"), async (req, res) => {
+	const { id } = req.params;
+
+	try {
+		const loan = await prisma.loan.update({
+			where: { id },
+			data: {
+				status: "VERIFIED",
+				verifiedById: req.user.id, // Assign verifier from authenticated user
+			},
+		});
+		res.json(loan);
+	} catch (error) {
+		console.error("Failed to verify loan", error);
+		res.status(500).json({ error: "Unable to verify loan" });
+	}
+});
+
+router.put("/:id/approve", requireRole("APPROVER"), async (req, res) => {
+	const { id } = req.params;
+
+	try {
+		const loan = await prisma.loan.update({
+			where: { id },
+			data: {
+				status: "APPROVED",
+				approvedById: req.user.id, // Assign approver from authenticated user
+			},
+		});
+		res.json(loan);
+	} catch (error) {
+		console.error("Failed to approve loan", error);
+		res.status(500).json({ error: "Unable to approve loan" });
+	}
+});
+
+router.put("/:id/reject", requireRole(["VERIFIER", "APPROVER"]), async (req, res) => {
+	const { id } = req.params;
+
+	try {
+		const loan = await prisma.loan.update({
+			where: { id },
+			data: {
+				status: "REJECTED",
+			},
+		});
+		res.json(loan);
+	} catch (error) {
+		console.error("Failed to reject loan", error);
+		res.status(500).json({ error: "Unable to reject loan" });
+	}
+});
+
+module.exports = router;
 
 module.exports = router;

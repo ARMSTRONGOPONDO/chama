@@ -13,18 +13,24 @@ datasource db {
 }
 
 model Member {
-  id           String    @id @default(cuid())
-  memberNumber String    @unique
-  name         String
-  phone        String    @unique
-  nationalId   String    @unique
-  dateJoined   DateTime
-  role         Role      @default(MEMBER)
-  savings      Saving[]
-  loans        Loan[]
-  guarantees   LoanGuarantor[]
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id                   String        @id @default(cuid())
+  memberNumber         String        @unique
+  name                 String
+  email                String?       @unique
+  phone                String        @unique
+  nationalId           String        @unique
+  dateJoined           DateTime
+  role                 Role          @default(MEMBER)
+  savings              Saving[]
+  loans                Loan[]
+  guarantees           LoanGuarantor[]
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  groups               Group[]       @relation("GroupMembers")
+  createdGroups        Group[]
+  officerLoans         Loan[]        @relation("OfficerLoans")
+  verifiedLoans        Loan[]        @relation("VerifiedLoans")
+  approvedLoans        Loan[]        @relation("ApprovedLoans")
 }
 
 model Saving {
@@ -49,10 +55,16 @@ model Loan {
   purpose              String
   issuedAt             DateTime      @default(now())
   dueDate              DateTime
-  status               LoanStatus    @default(APPROVED)
+  status               LoanStatus    @default(PENDING)
   repayments           Repayment[]
   type                 LoanType      @default(SHORT_TERM)
   guarantors           LoanGuarantor[]
+  officerId            String?
+  verifiedById         String?
+  approvedById         String?
+  officer              Member?       @relation("OfficerLoans", fields: [officerId], references: [id])
+  verifiedBy           Member?       @relation("VerifiedLoans", fields: [verifiedById], references: [id])
+  approvedBy           Member?       @relation("ApprovedLoans", fields: [approvedById], references: [id])
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 }
@@ -74,10 +86,24 @@ model LoanGuarantor {
   memberId  String
 }
 
+model Group {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  members     Member[] @relation("GroupMembers")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   Member   @relation(fields: [createdById], references: [id])
+  createdById String
+}
+
 enum Role {
   ADMIN
   TREASURER
   MEMBER
+  OFFICER
+  VERIFIER
+  APPROVER
 }
 
 enum LoanStatus {
