@@ -15,7 +15,7 @@ datasource db {
 model Member {
   id                   String        @id @default(cuid())
   memberNumber         String        @unique
-  accountNumber        String        @unique
+  accountNumber        String?       @unique
   name                 String
   email                String?       @unique
   password             String        @default("temp") // Hashed password
