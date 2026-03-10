@@ -17,7 +17,7 @@ export function Login({ handleLogin, alert }: LoginProps) {
     return (
         <div className="login-container">
             <div className="card">
-                <h2>STEVEN CHAMA PROJECT Login</h2>
+                <h2>CHAMA Manager Login</h2>
                 {alert && <div className="alert">{alert}</div>}
                 <form onSubmit={handleSubmit} className="form-stack">
                     <label>

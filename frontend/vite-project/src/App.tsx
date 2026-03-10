@@ -276,7 +276,7 @@ function App() {
 	return (
 		<div className="app-shell">
 			<aside className="sidebar">
-				<div className="sidebar-title">STEVEN CHAMA PROJECT</div>
+				<div className="sidebar-title">CHAMA Manager</div>
 				<nav className="sidebar-nav">
 					<button
 						type="button"
@@ -318,7 +318,7 @@ function App() {
 			<div className="main-column">
 				<header className="topbar">
 					<div className="topbar-left">
-						<div className="topbar-brand">STEVEN CHAMA PROJECT</div>
+						<div className="topbar-brand">CHAMA Manager</div>
 						<p className="topbar-subtitle">Lightweight command center for your chama</p>
 					</div>
 					<div className="topbar-right">
