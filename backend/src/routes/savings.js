@@ -8,6 +8,7 @@ const savingSchema = z.object({
   memberId: z.string().min(1),
   amount: z.preprocess((val) => Number(val), z.number().positive()),
   month: z.string().refine((val) => !Number.isNaN(Date.parse(val))),
+  transactionReference: z.string().optional(),
   note: z.string().max(280).optional(),
 });
 
@@ -23,6 +24,7 @@ router.post("/", async (req, res) => {
         memberId: parsed.data.memberId,
         amount: parsed.data.amount.toFixed(2),
         month: new Date(parsed.data.month),
+        transactionReference: parsed.data.transactionReference,
         note: parsed.data.note,
       },
     });

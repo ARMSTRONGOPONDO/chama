@@ -15,8 +15,10 @@ datasource db {
 model Member {
   id                   String        @id @default(cuid())
   memberNumber         String        @unique
+  accountNumber        String        @unique
   name                 String
   email                String?       @unique
+  password             String        @default("temp") // Hashed password
   phone                String        @unique
   nationalId           String        @unique
   dateJoined           DateTime
@@ -34,13 +36,14 @@ model Member {
 }
 
 model Saving {
-  id         String   @id @default(cuid())
-  member     Member   @relation(fields: [memberId], references: [id])
-  memberId   String
-  amount     Decimal  @db.Decimal(12, 2)
-  month      DateTime
-  recordedAt DateTime @default(now())
-  note       String?
+  id                   String   @id @default(cuid())
+  member               Member   @relation(fields: [memberId], references: [id])
+  memberId             String
+  amount               Decimal  @db.Decimal(12, 2)
+  month                DateTime
+  recordedAt           DateTime @default(now())
+  transactionReference String?  // For MPESA details
+  note                 String?
 }
 
 model Loan {
@@ -59,6 +62,7 @@ model Loan {
   repayments           Repayment[]
   type                 LoanType      @default(SHORT_TERM)
   guarantors           LoanGuarantor[]
+  documents            LoanDocument[]
   officerId            String?
   verifiedById         String?
   approvedById         String?
@@ -84,6 +88,16 @@ model LoanGuarantor {
   loanId    String
   member    Member @relation(fields: [memberId], references: [id])
   memberId  String
+}
+
+model LoanDocument {
+  id        String   @id @default(cuid())
+  loan      Loan     @relation(fields: [loanId], references: [id])
+  loanId    String
+  name      String
+  url       String
+  type      String
+  createdAt DateTime @default(now())
 }
 
 model Group {

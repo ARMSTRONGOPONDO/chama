@@ -1,6 +1,7 @@
 export type Member = {
   id: string
   memberNumber: string
+  accountNumber: string
   name: string
   email: string | null
   phone: string
@@ -11,6 +12,7 @@ export type Member = {
 export type MemberForm = {
   name: string;
   email: string;
+  password?: string;
   phone: string;
   nationalId: string;
   dateJoined: string;
@@ -30,10 +32,20 @@ export type SavingSummary = {
 
 export type LoanType = 'SHORT_TERM' | 'SIX_MONTH'
 
+export type LoanDocument = {
+  id: string;
+  loanId: string;
+  name: string;
+  url: string;
+  type: string;
+  createdAt: string;
+}
+
 export type Loan = {
 	id: string
 	member: { id: string; name: string; memberNumber: string }
 	principal: string
+	interestRate: string
 	interestAmount: string
 	monthlyInstallment: string
 	termMonths: number
@@ -46,6 +58,7 @@ export type Loan = {
 	repayments: { id: string; amount: string; paidAt: string; note: string | null }[]
 	totalRepaid: string
 	outstanding: string
+	documents: LoanDocument[];
 	officer?: { id: string; name: string; memberNumber: string };
 	verifiedBy?: { id: string; name: string; memberNumber: string };
 	approvedBy?: { id: string; name: string; memberNumber: string };
@@ -57,6 +70,16 @@ export type LoanForm = {
     purpose: string;
     type: LoanType;
     guarantorIds: string[];
+    documents?: FileList | null;
+}
+
+export type Group = {
+    id: string;
+    name: string;
+    description?: string;
+    members: Member[];
+    createdBy: Member;
+    createdAt: string;
 }
 
 // Runtime export to ensure Vite treats this as a module

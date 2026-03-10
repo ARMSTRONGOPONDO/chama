@@ -1,15 +1,47 @@
 const express = require("express");
 const { z } = require("zod");
 const { prisma } = require("../lib/prismaClient");
-const { requireRole } = require("../middleware/auth"); // Import requireRole
+const { requireRole } = require("../middleware/auth");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const router = express.Router();
+
+// Multer configuration
+const storage = multer.diskStorage({
+	destination: function (req, file, cb) {
+		const uploadDir = path.join(__dirname, "../../uploads");
+		if (!fs.existsSync(uploadDir)) {
+			fs.mkdirSync(uploadDir, { recursive: true });
+		}
+		cb(null, uploadDir);
+	},
+	filename: function (req, file, cb) {
+		const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+		cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+	},
+});
+
+const upload = multer({
+	storage: storage,
+	fileFilter: (req, file, cb) => {
+		const allowedTypes = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"];
+		const ext = path.extname(file.originalname).toLowerCase();
+		if (allowedTypes.includes(ext)) {
+			cb(null, true);
+		} else {
+			cb(new Error("Invalid file type. Only PDF, DOC, DOCX, and images are allowed."));
+		}
+	},
+	limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
 
 const baseLoanSchema = z.object({
 	memberId: z.string().min(1),
 	principal: z.preprocess((val) => Number(val), z.number().positive()),
 	purpose: z.string().min(3),
-	// officerId is set by the authenticated user, not passed in the body for creation
+	interestRate: z.preprocess((val) => (val ? Number(val) : undefined), z.number().positive().optional()),
 });
 
 const shortTermLoanSchema = baseLoanSchema.extend({
@@ -18,7 +50,10 @@ const shortTermLoanSchema = baseLoanSchema.extend({
 
 const sixMonthLoanSchema = baseLoanSchema.extend({
 	type: z.literal("SIX_MONTH"),
-	guarantorIds: z.array(z.string().min(1)).min(1),
+	guarantorIds: z.preprocess((val) => {
+		if (typeof val === "string") return JSON.parse(val);
+		return val;
+	}, z.array(z.string().min(1)).min(1)),
 });
 
 const createLoanSchema = z.discriminatedUnion("type", [shortTermLoanSchema, sixMonthLoanSchema]);
@@ -36,6 +71,7 @@ router.get("/", async (req, res) => {
 					},
 				},
 				repayments: true,
+				documents: true,
 				officer: { select: { id: true, name: true, memberNumber: true } },
 				verifiedBy: { select: { id: true, name: true, memberNumber: true } },
 				approvedBy: { select: { id: true, name: true, memberNumber: true } },
@@ -55,6 +91,7 @@ router.get("/", async (req, res) => {
 				member: loan.member,
 				principal: principalNum.toFixed(2),
 				interestAmount: interestNum.toFixed(2),
+				interestRate: Number(loan.interestRate ?? 0).toFixed(2),
 				monthlyInstallment: Number(loan.monthlyInstallment ?? 0).toFixed(2),
 				termMonths: loan.termMonths,
 				purpose: loan.purpose,
@@ -64,6 +101,7 @@ router.get("/", async (req, res) => {
 				dueDate: loan.dueDate,
 				guarantors: loan.guarantors.map((g) => g.member),
 				repayments: loan.repayments,
+				documents: loan.documents,
 				totalRepaid: totalRepaid.toFixed(2),
 				outstanding: outstanding.toFixed(2),
 				officer: loan.officer,
@@ -79,17 +117,16 @@ router.get("/", async (req, res) => {
 	}
 });
 
-router.post("/", requireRole("OFFICER"), async (req, res) => {
-	const parsed = createLoanSchema.safeParse(req.body);
-	if (!parsed.success) {
-		return res.status(400).json({ errors: parsed.error.errors });
-	}
-
+router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (req, res) => {
 	try {
-		const { memberId, principal, purpose, type } = parsed.data;
+		const parsed = createLoanSchema.safeParse(req.body);
+		if (!parsed.success) {
+			return res.status(400).json({ errors: parsed.error.errors });
+		}
 
-		// basic interest / terms
-		const interestRate = type === "SHORT_TERM" ? 10 : 12; // percent
+		const { memberId, principal, purpose, type, interestRate: customRate } = parsed.data;
+
+		const interestRate = customRate ?? (type === "SHORT_TERM" ? 10 : 12);
 		const termMonths = type === "SHORT_TERM" ? 1 : 6;
 		const interestAmount = (Number(principal) * interestRate) / 100;
 		const monthlyInstallment = (Number(principal) + interestAmount) / termMonths;
@@ -97,10 +134,8 @@ router.post("/", requireRole("OFFICER"), async (req, res) => {
 		const issuedAt = new Date();
 		const dueDate = new Date(issuedAt);
 		if (type === "SHORT_TERM") {
-			// 30 days from now
 			dueDate.setDate(dueDate.getDate() + 30);
 		} else {
-			// 6 months from now
 			dueDate.setMonth(dueDate.getMonth() + 6);
 		}
 
@@ -118,7 +153,7 @@ router.post("/", requireRole("OFFICER"), async (req, res) => {
 					issuedAt,
 					dueDate,
 					status: "PENDING",
-					officerId: req.user.id, // Assign officer from authenticated user
+					officerId: req.user.id,
 				},
 			});
 
@@ -135,6 +170,17 @@ router.post("/", requireRole("OFFICER"), async (req, res) => {
 				}
 			}
 
+			if (req.files && req.files.length > 0) {
+				await tx.loanDocument.createMany({
+					data: req.files.map((file) => ({
+						loanId: createdLoan.id,
+						name: file.originalname,
+						url: file.filename,
+						type: file.mimetype,
+					})),
+				});
+			}
+
 			return createdLoan;
 		});
 
@@ -145,15 +191,25 @@ router.post("/", requireRole("OFFICER"), async (req, res) => {
 	}
 });
 
+// Route to serve files
+router.get("/documents/:filename", (req, res) => {
+	const filename = req.params.filename;
+	const filepath = path.join(__dirname, "../../uploads", filename);
+	if (fs.existsSync(filepath)) {
+		res.sendFile(filepath);
+	} else {
+		res.status(404).json({ error: "File not found" });
+	}
+});
+
 router.put("/:id/verify", requireRole("VERIFIER"), async (req, res) => {
 	const { id } = req.params;
-
 	try {
 		const loan = await prisma.loan.update({
 			where: { id },
 			data: {
 				status: "VERIFIED",
-				verifiedById: req.user.id, // Assign verifier from authenticated user
+				verifiedById: req.user.id,
 			},
 		});
 		res.json(loan);
@@ -165,13 +221,12 @@ router.put("/:id/verify", requireRole("VERIFIER"), async (req, res) => {
 
 router.put("/:id/approve", requireRole("APPROVER"), async (req, res) => {
 	const { id } = req.params;
-
 	try {
 		const loan = await prisma.loan.update({
 			where: { id },
 			data: {
 				status: "APPROVED",
-				approvedById: req.user.id, // Assign approver from authenticated user
+				approvedById: req.user.id,
 			},
 		});
 		res.json(loan);
@@ -183,7 +238,6 @@ router.put("/:id/approve", requireRole("APPROVER"), async (req, res) => {
 
 router.put("/:id/reject", requireRole(["VERIFIER", "APPROVER"]), async (req, res) => {
 	const { id } = req.params;
-
 	try {
 		const loan = await prisma.loan.update({
 			where: { id },
@@ -197,7 +251,5 @@ router.put("/:id/reject", requireRole(["VERIFIER", "APPROVER"]), async (req, res
 		res.status(500).json({ error: "Unable to reject loan" });
 	}
 });
-
-module.exports = router;
 
 module.exports = router;

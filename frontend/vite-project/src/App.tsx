@@ -8,25 +8,34 @@ import { Savings } from './components/Savings';
 import { Loans } from './components/Loans';
 import { Groups } from './components/Groups';
 import { Login } from './components/Login';
-import type { Member, MemberForm, SavingSummary, LoanType, Loan } from './types';
+import type { Member, MemberForm, SavingSummary, Loan, LoanForm } from './types';
 
 function App() {
 	const [members, setMembers] = useState<Member[]>([])
 	const [summary, setSummary] = useState<SavingSummary | null>(null)
 	const [alert, setAlert] = useState<string | null>(null)
+
+	useEffect(() => {
+		if (alert) {
+			const timer = setTimeout(() => {
+				setAlert(null);
+			}, 5000);
+			return () => clearTimeout(timer);
+		}
+	}, [alert]);
 	const [isLoading, setIsLoading] = useState(false)
 	const [activeSection, setActiveSection] = useState<'overview' | 'members' | 'savings' | 'loans' | 'groups'>('overview')
   const [memberForm, setMemberForm] = useState<MemberForm>({
     name: '',
     email: '',
+    password: '',
     phone: '',
     nationalId: '',
     dateJoined: '',
     memberNumber: '',
     role: 'MEMBER',
   })
-  const [savingForm, setSavingForm] = useState({ memberId: '', amount: '', month: '', note: '' })
-	const [loanForm, setLoanForm] = useState<any>({
+	const [loanForm, setLoanForm] = useState<LoanForm>({
 		memberId: '',
 		principal: '',
 		purpose: '',
@@ -43,18 +52,15 @@ function App() {
 			const data = await response.json()
 			setMembers(data)
 			if (data.length > 0) {
-				if (!savingForm.memberId) {
-					setSavingForm((prev) => ({ ...prev, memberId: data[0].id }))
-				}
 				if (!loanForm.memberId) {
-					setLoanForm((prev: any) => ({ ...prev, memberId: data[0].id }))
+					setLoanForm((prev: LoanForm) => ({ ...prev, memberId: data[0].id }))
 				}
 			}
 		} catch (error) {
 			console.error(error)
 			setAlert('Unable to load members right now.')
 		}
-	}, [savingForm.memberId, loanForm.memberId])
+	}, [loanForm.memberId])
 
 	const refreshLoans = useCallback(async () => {
 		try {
@@ -91,13 +97,13 @@ function App() {
 	    }
 	  }, [refreshMembers, refreshSummary, refreshLoans, currentUser])
 
-	const handleLogin = async (email: string) => {
+	const handleLogin = async (identifier: string, password?: string) => {
 		setAlert(null);
 		try {
 			const response = await fetch(`${API_BASE}/api/auth/login`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email }),
+				body: JSON.stringify({ identifier, password }),
 			});
 			if (!response.ok) {
 				const errorData = await response.json();
@@ -160,38 +166,13 @@ function App() {
         return
       }
 
-      setMemberForm({ name: '', email: '', phone: '', nationalId: '', dateJoined: '', memberNumber: '', role: 'MEMBER' })
+      setMemberForm({ name: '', email: '', password: '', phone: '', nationalId: '', dateJoined: '', memberNumber: '', role: 'MEMBER' })
       await refreshMembers()
       await refreshSummary()
       setAlert('Member registered successfully.')
     } catch (error) {
       console.error(error)
       setAlert('Failed to register member.')
-    }
-  }
-
-  const handleSavingSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setAlert(null)
-
-    try {
-      const { memberId, amount, month, note } = savingForm
-      const response = await fetch(`${API_BASE}/api/savings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ memberId, amount, month, note }),
-      })
-
-      if (!response.ok) {
-        throw new Error('Unable to record saving')
-      }
-
-      setSavingForm((prev) => ({ ...prev, amount: '', note: '' }))
-      await refreshSummary()
-      setAlert('Saving recorded. Keep the momentum going!')
-    } catch (error) {
-      console.error(error)
-      setAlert('Failed to record saving.')
     }
   }
 
@@ -222,21 +203,32 @@ function App() {
 				return
 			}
 
-			const body = {
-				memberId: loanForm.memberId,
-				principal: loanForm.principal,
-				purpose: loanForm.purpose,
-				type: loanForm.type,
-				guarantorIds: loanForm.type === 'SIX_MONTH' ? loanForm.guarantorIds : undefined,
+			const formData = new FormData();
+			formData.append('memberId', loanForm.memberId);
+			formData.append('principal', loanForm.principal);
+			formData.append('purpose', loanForm.purpose);
+			formData.append('type', loanForm.type);
+			
+			if ((loanForm as any).interestRate) {
+				formData.append('interestRate', (loanForm as any).interestRate);
+			}
+
+			if (loanForm.type === 'SIX_MONTH') {
+				formData.append('guarantorIds', JSON.stringify(loanForm.guarantorIds));
+			}
+
+			if (loanForm.documents) {
+				for (let i = 0; i < loanForm.documents.length; i++) {
+					formData.append('documents', loanForm.documents[i]);
+				}
 			}
 
 			const response = await fetch(`${API_BASE}/api/loans`, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
 					'Authorization': `Bearer ${currentUser.id}`,
 				},
-				body: JSON.stringify(body),
+				body: formData,
 			})
 
 			if (!response.ok) {
@@ -264,7 +256,7 @@ function App() {
 				return
 			}
 
-			setLoanForm((prev: any) => ({ ...prev, principal: '', purpose: '', guarantorIds: [] }))
+			setLoanForm({ memberId: '', principal: '', purpose: '', type: 'SHORT_TERM', guarantorIds: [] })
 			await refreshLoans()
 			setAlert('Loan created successfully.')
 		} catch (error) {
@@ -360,10 +352,9 @@ function App() {
 
 				{activeSection === 'savings' && (
 					<Savings
-						members={members}
-						savingForm={savingForm}
-						setSavingForm={setSavingForm}
-						handleSavingSubmit={handleSavingSubmit}
+						currentUser={currentUser}
+						setAlert={setAlert}
+						refreshSummary={refreshSummary}
 					/>
 				)}
 		

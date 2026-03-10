@@ -2,18 +2,31 @@ const express = require("express");
 const { z } = require("zod");
 const { prisma, Prisma } = require("../lib/prismaClient");
 const { requireRole } = require("../middleware/auth");
+const bcrypt = require("bcrypt");
 
 const router = express.Router();
 
 const memberSchema = z.object({
   name: z.string().min(3),
   email: z.string().email().optional().or(z.literal("")), // Allow optional or empty string
+  password: z.string().min(6).optional(), // Optional password field
   phone: z.string().min(8),
   nationalId: z.string().min(6),
   dateJoined: z.string().refine((val) => !Number.isNaN(Date.parse(val))),
   memberNumber: z.string().min(3),
   role: z.enum(["ADMIN", "TREASURER", "MEMBER", "OFFICER", "VERIFIER", "APPROVER"]).optional(),
 });
+
+async function generateAccountNumber() {
+  let isUnique = false;
+  let accNum = "";
+  while (!isUnique) {
+    accNum = Math.floor(10000000 + Math.random() * 90000000).toString();
+    const existing = await prisma.member.findUnique({ where: { accountNumber: accNum } });
+    if (!existing) isUnique = true;
+  }
+  return accNum;
+}
 
 router.post("/", requireRole("ADMIN"), async (req, res) => {
   console.log("POST /api/members - body:", req.body);
@@ -23,11 +36,18 @@ router.post("/", requireRole("ADMIN"), async (req, res) => {
   }
 
   try {
-    const { role, email, ...memberData } = parseResult.data;
+    const { role, email, password, ...memberData } = parseResult.data;
+    const accountNumber = await generateAccountNumber();
+    
+    // Hash the password, default to '123456' if not provided
+    const hashedPassword = await bcrypt.hash(password || "123456", 10);
+    
     const member = await prisma.member.create({
       data: {
         ...memberData,
-        email: email && email.trim() !== "" ? email.trim() : null, // Convert empty or whitespace strings to null
+        accountNumber,
+        email: email && email.trim() !== "" ? email.trim() : null,
+        password: hashedPassword,
         dateJoined: new Date(memberData.dateJoined),
         role: role || "MEMBER",
       },

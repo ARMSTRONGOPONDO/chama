@@ -1,31 +1,42 @@
 import React, { useState } from 'react';
 
 type LoginProps = {
-    handleLogin: (email: string) => Promise<void>;
+    handleLogin: (identifier: string, password?: string) => Promise<void>;
     alert: string | null;
 }
 
 export function Login({ handleLogin, alert }: LoginProps) {
-    const [email, setEmail] = useState('');
+    const [identifier, setIdentifier] = useState('');
+    const [password, setPassword] = useState('');
 
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        handleLogin(email);
+        handleLogin(identifier, password);
     };
 
     return (
         <div className="login-container">
             <div className="card">
-                <h2>Group Treasury Login</h2>
+                <h2>STEVEN CHAMA PROJECT Login</h2>
                 {alert && <div className="alert">{alert}</div>}
                 <form onSubmit={handleSubmit} className="form-stack">
                     <label>
-                        Stakeholder Email
+                        Email or Account Number
                         <input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="unityinactioncbo@gmail.com"
+                            type="text"
+                            value={identifier}
+                            onChange={(e) => setIdentifier(e.target.value)}
+                            placeholder="Email or 8-digit Account #"
+                            required
+                        />
+                    </label>
+                    <label>
+                        Password
+                        <input
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
                             required
                         />
                     </label>
