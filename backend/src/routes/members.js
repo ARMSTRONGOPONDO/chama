@@ -3,8 +3,40 @@ const { z } = require("zod");
 const { prisma, Prisma } = require("../lib/prismaClient");
 const { requireRole } = require("../middleware/auth");
 const bcrypt = require("bcrypt");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
 
 const router = express.Router();
+
+// Multer configuration
+const storage = multer.diskStorage({
+	destination: function (req, file, cb) {
+		const uploadDir = path.join(__dirname, "../../uploads");
+		if (!fs.existsSync(uploadDir)) {
+			fs.mkdirSync(uploadDir, { recursive: true });
+		}
+		cb(null, uploadDir);
+	},
+	filename: function (req, file, cb) {
+		const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+		cb(null, file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname));
+	},
+});
+
+const upload = multer({
+	storage: storage,
+	fileFilter: (req, file, cb) => {
+		const allowedTypes = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png"];
+		const ext = path.extname(file.originalname).toLowerCase();
+		if (allowedTypes.includes(ext)) {
+			cb(null, true);
+		} else {
+			cb(new Error("Invalid file type. Only PDF, DOC, DOCX, and images are allowed."));
+		}
+	},
+	limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+});
 
 const memberSchema = z.object({
   name: z.string().min(3),
@@ -28,8 +60,7 @@ async function generateAccountNumber() {
   return accNum;
 }
 
-router.post("/", requireRole("ADMIN"), async (req, res) => {
-  console.log("POST /api/members - body:", req.body);
+router.post("/", requireRole("ADMIN"), upload.array("documents", 5), async (req, res) => {
   const parseResult = memberSchema.safeParse(req.body);
   if (!parseResult.success) {
     return res.status(400).json({ errors: parseResult.error.errors });
@@ -38,21 +69,33 @@ router.post("/", requireRole("ADMIN"), async (req, res) => {
   try {
     const { role, email, password, ...memberData } = parseResult.data;
     const accountNumber = await generateAccountNumber();
-    
-    // Hash the password, default to '123456' if not provided
     const hashedPassword = await bcrypt.hash(password || "123456", 10);
     
-    const member = await prisma.member.create({
-      data: {
-        ...memberData,
-        accountNumber,
-        email: email && email.trim() !== "" ? email.trim() : null,
-        password: hashedPassword,
-        dateJoined: new Date(memberData.dateJoined),
-        role: role || "MEMBER",
-      },
+    const member = await prisma.$transaction(async (tx) => {
+        const createdMember = await tx.member.create({
+            data: {
+                ...memberData,
+                accountNumber,
+                email: email && email.trim() !== "" ? email.trim() : null,
+                password: hashedPassword,
+                dateJoined: new Date(memberData.dateJoined),
+                role: role || "MEMBER",
+            },
+        });
+
+        if (req.files && req.files.length > 0) {
+            await tx.memberDocument.createMany({
+                data: req.files.map((file) => ({
+                    memberId: createdMember.id,
+                    name: file.originalname,
+                    url: file.filename,
+                    type: file.mimetype,
+                })),
+            });
+        }
+        return createdMember;
     });
-    console.log("Created member:", member);
+
     res.status(201).json(member);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
@@ -129,7 +172,7 @@ router.put("/:id/password", async (req, res) => {
 
 router.get("/", async (req, res) => {
   const members = await prisma.member.findMany({
-    include: { savings: true, loans: true },
+    include: { savings: true, loans: true, documents: true },
   });
   res.json(members);
 });

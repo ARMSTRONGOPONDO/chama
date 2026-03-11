@@ -143,13 +143,28 @@ function App() {
 		}
 
     try {
+			const formData = new FormData();
+			formData.append('name', memberForm.name);
+			formData.append('email', memberForm.email);
+			formData.append('password', memberForm.password || '');
+			formData.append('phone', memberForm.phone);
+			formData.append('nationalId', memberForm.nationalId);
+			formData.append('dateJoined', memberForm.dateJoined);
+			formData.append('memberNumber', memberForm.memberNumber);
+			formData.append('role', memberForm.role);
+
+			if (memberForm.documents) {
+				for (let i = 0; i < memberForm.documents.length; i++) {
+					formData.append('documents', memberForm.documents[i]);
+				}
+			}
+
       const response = await fetch(`${API_BASE}/api/members`, {
         method: 'POST',
         headers: {
-					'Content-Type': 'application/json',
 					'Authorization': `Bearer ${currentUser.id}`,
 				},
-        body: JSON.stringify(memberForm),
+        body: formData,
       })
 
       if (!response.ok) {
@@ -180,7 +195,7 @@ function App() {
         return
       }
 
-      setMemberForm({ name: '', email: '', password: '', phone: '', nationalId: '', dateJoined: '', memberNumber: '', role: 'MEMBER' })
+      setMemberForm({ name: '', email: '', password: '', phone: '', nationalId: '', dateJoined: '', memberNumber: '', role: 'MEMBER', documents: null })
       await refreshMembers()
       await refreshSummary()
       setAlert('Member registered successfully.')

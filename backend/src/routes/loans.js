@@ -54,7 +54,9 @@ const shortTermLoanSchema = baseLoanSchema.extend({
 const sixMonthLoanSchema = baseLoanSchema.extend({
 	type: z.literal("SIX_MONTH"),
 	guarantorIds: z.preprocess((val) => {
-		if (typeof val === "string") return JSON.parse(val);
+		if (typeof val === "string") {
+            try { return JSON.parse(val); } catch(e) { return []; }
+        }
 		return val;
 	}, z.array(z.string().min(1)).min(1)),
 });
@@ -74,6 +76,7 @@ router.get("/", async (req, res) => {
 					},
 				},
 				repayments: {
+					include: { documents: true },
 					orderBy: { paidAt: "desc" }
 				},
 				documents: true,
@@ -125,7 +128,7 @@ router.get("/", async (req, res) => {
 	}
 });
 
-router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (req, res) => {
+router.post("/", requireRole("OFFICER"), upload.array("documents", 10), async (req, res) => {
 	try {
 		const parsed = createLoanSchema.safeParse(req.body);
 		if (!parsed.success) {
@@ -159,11 +162,8 @@ router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (re
             }
         }
 
-        // Calculate days for daily repayment
         const diffTime = Math.abs(dueDate.getTime() - issuedAt.getTime());
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
-		
-		// Auto-calculate daily if not provided
 		const dailyRepaymentAmount = customDaily ?? (totalDue / diffDays);
 
 		const loan = await prisma.$transaction(async (tx) => {
@@ -219,13 +219,13 @@ router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (re
 	}
 });
 
-// Record a repayment
-router.post("/:id/repayments", async (req, res) => {
+// Fix: Repayment now handles multipart even if only amount is sent
+router.post("/:id/repayments", upload.array("documents", 10), async (req, res) => {
 	const { id } = req.params;
 	const { amount, note } = req.body;
 
 	if (!amount || Number(amount) <= 0) {
-		return res.status(400).json({ error: "Invalid repayment amount" });
+		return res.status(400).json({ error: "Invalid repayment amount. Make sure you are sending 'amount' in the form." });
 	}
 
 	try {
@@ -251,7 +251,17 @@ router.post("/:id/repayments", async (req, res) => {
 				}
 			});
 
-			// If fully repaid, update status
+			if (req.files && req.files.length > 0) {
+				await tx.repaymentDocument.createMany({
+					data: req.files.map((file) => ({
+						repaymentId: r.id,
+						name: file.originalname,
+						url: file.filename,
+						type: file.mimetype,
+					})),
+				});
+			}
+
 			if (remainingBalance <= 0) {
 				await tx.loan.update({
 					where: { id },

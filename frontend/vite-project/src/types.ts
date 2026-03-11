@@ -7,6 +7,7 @@ export type Member = {
   phone: string
   nationalId: string
   role: string
+  documents?: MemberDocument[];
 }
 
 export type MemberForm = {
@@ -18,6 +19,7 @@ export type MemberForm = {
   dateJoined: string;
   memberNumber: string;
   role: string;
+  documents?: FileList | null;
 }
 
 export type SavingSummary = {
@@ -41,6 +43,24 @@ export type LoanDocument = {
   createdAt: string;
 }
 
+export type MemberDocument = {
+  id: string;
+  memberId: string;
+  name: string;
+  url: string;
+  type: string;
+  createdAt: string;
+}
+
+export type RepaymentDocument = {
+  id: string;
+  repaymentId: string;
+  name: string;
+  url: string;
+  type: string;
+  createdAt: string;
+}
+
 export type Repayment = {
 	id: string;
 	loanId: string;
@@ -48,6 +68,7 @@ export type Repayment = {
 	remainingBalance: string;
 	paidAt: string;
 	note: string | null;
+	documents?: RepaymentDocument[];
 }
 
 export type Loan = {

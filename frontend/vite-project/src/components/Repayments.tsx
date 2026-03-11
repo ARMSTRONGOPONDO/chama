@@ -22,6 +22,7 @@ export function Repayments({
     const [searchTerm, setSearchTerm] = useState('');
     const [repaymentAmount, setRepaymentAmount] = useState('');
     const [repaymentNote, setRepaymentNote] = useState('');
+    const [repaymentFiles, setRepaymentFiles] = useState<FileList | null>(null);
     const [processingId, setProcessingId] = useState<string | null>(null);
     const [selectedLoanForCalendar, setSelectedLoanForCalendar] = useState<Loan | null>(null);
 
@@ -39,16 +40,22 @@ export function Repayments({
 
         setProcessingId(loanId);
         try {
+            const formData = new FormData();
+            formData.append('amount', repaymentAmount);
+            formData.append('note', repaymentNote);
+            
+            if (repaymentFiles) {
+                for (let i = 0; i < repaymentFiles.length; i++) {
+                    formData.append('documents', repaymentFiles[i]);
+                }
+            }
+
             const response = await fetch(`${API_BASE}/api/loans/${loanId}/repayments`, {
                 method: 'POST',
                 headers: { 
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${currentUser?.id}`
                 },
-                body: JSON.stringify({
-                    amount: repaymentAmount,
-                    note: repaymentNote
-                }),
+                body: formData,
             });
 
             if (!response.ok) {
@@ -59,6 +66,7 @@ export function Repayments({
             setAlert('Repayment recorded successfully.');
             setRepaymentAmount('');
             setRepaymentNote('');
+            setRepaymentFiles(null);
             await refreshLoans();
             
             if (selectedLoanForCalendar && selectedLoanForCalendar.id === loanId) {
@@ -93,25 +101,42 @@ export function Repayments({
 
         while (current <= endDate) {
             const dateStr = current.toISOString().split('T')[0];
+            
             const paidOnDay = repayments
                 .filter(r => new Date(r.paidAt).toISOString().split('T')[0] === dateStr)
                 .reduce((sum, r) => sum + Number(r.amount), 0);
 
             if (current < today) {
-                if (paidOnDay >= dailyRequired) statuses[dateStr] = 'paid';
-                else if (paidOnDay > 0) statuses[dateStr] = 'late';
-                else { statuses[dateStr] = 'missed'; missedCount++; }
+                if (paidOnDay >= dailyRequired) {
+                    statuses[dateStr] = 'paid';
+                } else if (paidOnDay > 0) {
+                    statuses[dateStr] = 'late';
+                } else {
+                    statuses[dateStr] = 'missed';
+                    missedCount++;
+                }
             } else if (current.getTime() === today.getTime()) {
-                if (paidOnDay >= dailyRequired) statuses[dateStr] = 'paid';
-                else { statuses[dateStr] = 'today'; if (!nextPaymentDate) nextPaymentDate = new Date(current); }
+                if (paidOnDay >= dailyRequired) {
+                    statuses[dateStr] = 'paid';
+                } else {
+                    statuses[dateStr] = 'today';
+                    if (!nextPaymentDate) nextPaymentDate = new Date(current);
+                }
             } else {
                 statuses[dateStr] = 'upcoming';
-                if (!nextPaymentDate) nextPaymentDate = new Date(current);
+                if (!nextPaymentDate && !statuses[dateStr]) nextPaymentDate = new Date(current);
             }
+
             current.setDate(current.getDate() + 1);
         }
 
-        return { statuses, summary: { missedCount, nextPaymentDate: nextPaymentDate?.toLocaleDateString() || 'Loan Completed' } };
+        return { 
+            statuses, 
+            summary: {
+                missedCount,
+                nextPaymentDate: nextPaymentDate?.toLocaleDateString() || 'Loan Completed'
+            } 
+        };
     }, [selectedLoanForCalendar]);
 
     return (
@@ -124,7 +149,7 @@ export function Repayments({
                     </div>
                     <input 
                         type="text" 
-                        placeholder="Search borrower..." 
+                        placeholder="Search by member name or ID..." 
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         style={{ padding: '0.5rem', borderRadius: '0.5rem', border: '1px solid var(--color-border-soft)', width: '250px' }}
@@ -132,115 +157,139 @@ export function Repayments({
                 </div>
 
                 {isLoansLoading ? (
-                    <p className="muted">Refreshing data…</p>
+                    <p className="muted">Refreshing loan data…</p>
                 ) : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
                         <thead>
                             <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--color-border-soft)' }}>
                                 <th style={{ padding: '0.75rem' }}>Borrower</th>
-                                <th style={{ padding: '0.75rem' }}>Daily Target</th>
-                                <th style={{ padding: '0.75rem' }}>Stats</th>
+                                <th style={{ padding: '0.75rem' }}>Overview</th>
+                                <th style={{ padding: '0.75rem' }}>Repayment Stats</th>
                                 <th style={{ padding: '0.75rem' }}>Progress</th>
-                                <th style={{ padding: '0.75rem', textAlign: 'right' }}>Record</th>
+                                <th style={{ padding: '0.75rem', textAlign: 'right' }}>Record Payment</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {activeLoans.map((loan) => (
-                                <tr key={loan.id} style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
-                                    <td style={{ padding: '0.75rem' }}>
-                                        <div style={{ fontWeight: 600 }}>{loan.member.name}</div>
-                                        <button 
-                                            onClick={() => setSelectedLoanForCalendar(loan)}
-                                            style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem', marginTop: '0.4rem', background: '#f3f4f6', border: '1px solid #e5e7eb' }}
-                                        >
-                                            📅 View Calendar
-                                        </button>
-                                    </td>
-                                    <td style={{ padding: '0.75rem' }}>
-                                        <div style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 700 }}>KSh {loan.dailyRepaymentAmount}</div>
-                                    </td>
-                                    <td style={{ padding: '0.75rem' }}>
-                                        <div style={{ fontSize: '0.8rem', color: '#dc2626' }}>Bal: KSh {loan.outstanding}</div>
-                                    </td>
-                                    <td style={{ padding: '0.75rem' }}>
-                                        <div style={{ width: '80px', height: '6px', background: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
-                                            <div style={{ width: `${loan.repaymentProgress}%`, height: '100%', background: '#7c3aed' }}></div>
-                                        </div>
-                                        <div style={{ fontSize: '0.7rem' }}>{loan.repaymentProgress}%</div>
-                                    </td>
-                                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                                        <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end' }}>
-                                            <input 
-                                                type="number" 
-                                                placeholder="KSh" 
-                                                style={{ width: '70px', padding: '0.25rem', fontSize: '0.8rem' }}
-                                                onBlur={(e) => setRepaymentAmount(e.target.value)}
-                                                disabled={loan.status === 'PAID'}
-                                            />
+                            {activeLoans.length === 0 ? (
+                                <tr><td colSpan={5} style={{ padding: '2rem', textAlign: 'center' }} className="muted">No active loans found matching "{searchTerm}"</td></tr>
+                            ) : (
+                                activeLoans.map((loan) => (
+                                    <tr key={loan.id} style={{ borderBottom: '1px solid var(--color-border-soft)' }}>
+                                        <td style={{ padding: '0.75rem' }}>
+                                            <div style={{ fontWeight: 600 }}>{loan.member.name}</div>
+                                            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Acc: {loan.member.accountNumber}</div>
                                             <button 
-                                                onClick={() => handleRecordRepayment(loan.id)}
-                                                disabled={processingId === loan.id || loan.status === 'PAID'}
-                                                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                                                onClick={() => setSelectedLoanForCalendar(loan)}
+                                                style={{ fontSize: '0.7rem', padding: '0.2rem 0.4rem', marginTop: '0.4rem', background: '#f3f4f6', color: 'var(--color-primary)', border: '1px solid var(--color-border-soft)' }}
                                             >
-                                                Pay
+                                                📅 View Calendar
                                             </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td style={{ padding: '0.75rem' }}>
+                                            <div style={{ fontSize: '0.85rem' }}>Due: <b>KSh {loan.totalDue}</b></div>
+                                            <div style={{ fontSize: '0.85rem', color: 'var(--color-primary)', fontWeight: 600 }}>Daily: KSh {loan.dailyRepaymentAmount}</div>
+                                        </td>
+                                        <td style={{ padding: '0.75rem' }}>
+                                            <div style={{ fontSize: '0.85rem', color: '#059669', fontWeight: 600 }}>Paid: KSh {loan.totalRepaid}</div>
+                                            <div style={{ fontSize: '0.85rem', color: '#dc2626', fontWeight: 700 }}>Bal: KSh {loan.outstanding}</div>
+                                        </td>
+                                        <td style={{ padding: '0.75rem' }}>
+                                            <div style={{ width: '100px', height: '8px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden', marginBottom: '0.25rem' }}>
+                                                <div style={{ width: `${loan.repaymentProgress}%`, height: '100%', background: '#7c3aed' }}></div>
+                                            </div>
+                                            <div style={{ fontSize: '0.75rem', fontWeight: 600 }}>{loan.repaymentProgress}%</div>
+                                        </td>
+                                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
+                                                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                                    <input 
+                                                        type="number" 
+                                                        placeholder="Amount" 
+                                                        style={{ width: '90px', padding: '0.3rem', fontSize: '0.85rem' }}
+                                                        onBlur={(e) => setRepaymentAmount(e.target.value)}
+                                                        disabled={loan.status === 'PAID'}
+                                                    />
+                                                    <button 
+                                                        onClick={() => handleRecordRepayment(loan.id)}
+                                                        disabled={processingId === loan.id || loan.status === 'PAID'}
+                                                        style={{ padding: '0.3rem 0.75rem', fontSize: '0.8rem' }}
+                                                    >
+                                                        {processingId === loan.id ? '...' : 'Pay'}
+                                                    </button>
+                                                </div>
+                                                <input 
+                                                    type="file" 
+                                                    multiple 
+                                                    accept=".jpg,.jpeg,.png,.pdf"
+                                                    style={{ width: '165px', fontSize: '0.65rem' }}
+                                                    onChange={(e) => setRepaymentFiles(e.target.files)}
+                                                    disabled={loan.status === 'PAID'}
+                                                />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
                         </tbody>
                     </table>
                 )}
             </article>
 
             {selectedLoanForCalendar && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', zIndex: 1000, padding: '1rem', overflowY: 'auto' }}>
-                    <article className="card" style={{ width: '100%', maxWidth: '800px', background: 'white', position: 'relative', marginTop: '2rem' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: '1rem' }}>
+                    <article className="card" style={{ width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', background: 'white', position: 'relative' }}>
                         <button 
                             onClick={() => setSelectedLoanForCalendar(null)}
-                            style={{ position: 'absolute', top: '1rem', right: '1rem', background: '#fee2e2', color: '#dc2626', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', zIndex: 10 }}
+                            style={{ position: 'absolute', top: '1rem', right: '1rem', background: '#fef2f2', color: '#dc2626', border: 'none', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', fontWeight: 'bold' }}
                         >
                             ✕
                         </button>
 
-                        <div className="responsive-modal-grid">
-                            <div className="modal-content-left">
-                                <h3 style={{ marginBottom: '0.5rem' }}>{selectedLoanForCalendar.member.name}</h3>
-                                <p className="muted" style={{ fontSize: '0.8rem', marginBottom: '1.5rem' }}>Repayment Health Analysis</p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem', flexWrap: 'wrap' }}>
+                            <div>
+                                <h3 style={{ marginBottom: '0.5rem' }}>Repayment Tracking: {selectedLoanForCalendar.member.name}</h3>
+                                <p className="muted" style={{ fontSize: '0.85rem' }}>
+                                    Loan Type: <b>{selectedLoanForCalendar.type}</b> | 
+                                    Principal: <b>KSh {selectedLoanForCalendar.principal}</b>
+                                </p>
 
-                                <div className="modal-stats-grid">
-                                    <div className="modal-stat-box">
-                                        <label>MISSES</label>
-                                        <div className="stat-val red">{calendarData.summary?.missedCount} Days</div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', margin: '1.5rem 0' }}>
+                                    <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Paid</div>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669' }}>KSh {selectedLoanForCalendar.totalRepaid}</div>
                                     </div>
-                                    <div className="modal-stat-box">
-                                        <label>NEXT DUE</label>
-                                        <div className="stat-val blue">{calendarData.summary?.nextPaymentDate}</div>
-                                    </div>
-                                    <div className="modal-stat-box">
-                                        <label>PAID SO FAR</label>
-                                        <div className="stat-val green">KSh {selectedLoanForCalendar.totalRepaid}</div>
-                                    </div>
-                                    <div className="modal-stat-box">
-                                        <label>REMAINING</label>
-                                        <div className="stat-val orange">KSh {selectedLoanForCalendar.outstanding}</div>
+                                    <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Remaining</div>
+                                        <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#dc2626' }}>KSh {selectedLoanForCalendar.outstanding}</div>
                                     </div>
                                 </div>
 
-                                <div style={{ marginTop: '2rem' }}>
-                                    <h4 style={{ fontSize: '0.85rem', textTransform: 'uppercase', color: '#64748b', marginBottom: '1rem' }}>Recent Activity</h4>
+                                <div style={{ marginTop: '1.5rem' }}>
+                                    <h4 style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>Recent History & Receipts</h4>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        {selectedLoanForCalendar.repayments?.slice(0, 3).map(r => (
-                                            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem', background: '#f8fafc', borderRadius: '0.5rem', fontSize: '0.8rem' }}>
-                                                <span style={{ fontWeight: 600 }}>{new Date(r.paidAt).toLocaleDateString()}</span>
-                                                <span style={{ color: '#059669', fontWeight: 700 }}>+KSh {r.amount}</span>
+                                        {selectedLoanForCalendar.repayments?.slice(0, 5).map(r => (
+                                            <div key={r.id} style={{ padding: '0.75rem', borderBottom: '1px solid #f1f5f9', fontSize: '0.85rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                    <span>{new Date(r.paidAt).toLocaleDateString()}</span>
+                                                    <span style={{ fontWeight: 600, color: '#059669' }}>+KSh {r.amount}</span>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                                                    {r.documents?.map(doc => (
+                                                        <a key={doc.id} href={`${API_BASE}/api/loans/documents/${doc.url}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.7rem', color: 'var(--color-primary)' }}>
+                                                            View Receipt 📄
+                                                        </a>
+                                                    ))}
+                                                </div>
                                             </div>
                                         ))}
+                                        {(!selectedLoanForCalendar.repayments || selectedLoanForCalendar.repayments.length === 0) && (
+                                            <p className="muted" style={{ fontSize: '0.8rem' }}>No payments recorded yet.</p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="modal-content-right">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                                 <Calendar 
                                     selectedDate={new Date()} 
                                     dayStatuses={calendarData.statuses}

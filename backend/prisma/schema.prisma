@@ -26,6 +26,7 @@ model Member {
   savings              Saving[]
   loans                Loan[]
   guarantees           LoanGuarantor[]
+  documents            MemberDocument[]
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
   groups               Group[]       @relation("GroupMembers")
@@ -83,6 +84,7 @@ model Repayment {
   remainingBalance Decimal? @db.Decimal(12, 2)
   paidAt           DateTime @default(now())
   note             String?
+  documents        RepaymentDocument[]
 }
 
 model LoanGuarantor {
@@ -101,6 +103,26 @@ model LoanDocument {
   url       String
   type      String
   createdAt DateTime @default(now())
+}
+
+model MemberDocument {
+  id        String   @id @default(cuid())
+  member    Member   @relation(fields: [memberId], references: [id])
+  memberId  String
+  name      String
+  url       String
+  type      String
+  createdAt DateTime @default(now())
+}
+
+model RepaymentDocument {
+  id          String    @id @default(cuid())
+  repayment   Repayment @relation(fields: [repaymentId], references: [id])
+  repaymentId String
+  name        String
+  url         String
+  type        String
+  createdAt   DateTime  @default(now())
 }
 
 model Group {

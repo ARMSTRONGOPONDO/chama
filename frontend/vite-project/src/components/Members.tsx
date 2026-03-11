@@ -192,6 +192,19 @@ export function Members({
                             />
                         </label>
                     </div>
+                    
+                    <label>
+                        Member Documents (IDs, Photos)
+                        <input
+                            type="file"
+                            multiple
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                            onChange={(event) => {
+                                setMemberForm((prev) => ({ ...prev, documents: event.target.files }));
+                            }}
+                        />
+                    </label>
+
                     <button type="submit">Save member</button>
                 </form>
             </article>
@@ -216,7 +229,7 @@ export function Members({
                             <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--color-border-soft)' }}>
                                 <th style={{ padding: '0.75rem' }}>Member Info</th>
                                 <th style={{ padding: '0.75rem' }}>Account & Role</th>
-                                <th style={{ padding: '0.75rem' }}>Contact</th>
+                                <th style={{ padding: '0.75rem' }}>Documents</th>
                                 <th style={{ padding: '0.75rem', textAlign: 'right' }}>Actions</th>
                             </tr>
                         </thead>
@@ -236,8 +249,15 @@ export function Members({
                                                 <span className="loan-pill" style={{ fontSize: '0.65rem' }}>{member.role}</span>
                                             </td>
                                             <td style={{ padding: '0.75rem' }}>
-                                                <div style={{ fontSize: '0.8rem' }}>{member.phone}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{member.email || 'No email'}</div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                    {member.documents && member.documents.length > 0 ? (
+                                                        member.documents.map(doc => (
+                                                            <a key={doc.id} href={`${API_BASE}/api/loans/documents/${doc.url}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.7rem', color: 'var(--color-primary)' }}>
+                                                                {doc.name.length > 15 ? doc.name.substring(0, 12) + '...' : doc.name}
+                                                            </a>
+                                                        ))
+                                                    ) : <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>None</span>}
+                                                </div>
                                             </td>
                                             <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                                                 {currentUser?.role === 'ADMIN' && member.role !== 'ADMIN' && (
