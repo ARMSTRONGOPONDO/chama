@@ -43,6 +43,8 @@ const baseLoanSchema = z.object({
 	purpose: z.string().min(3),
 	interestRate: z.preprocess((val) => (val ? Number(val) : undefined), z.number().positive().optional()),
 	dailyRepaymentAmount: z.preprocess((val) => (val ? Number(val) : undefined), z.number().positive().optional()),
+	issuedAt: z.string().optional(),
+	dueDate: z.string().optional(),
 });
 
 const shortTermLoanSchema = baseLoanSchema.extend({
@@ -130,7 +132,13 @@ router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (re
 			return res.status(400).json({ errors: parsed.error.errors });
 		}
 
-		const { memberId, principal, purpose, type, interestRate: customRate, dailyRepaymentAmount: customDaily } = parsed.data;
+		const { 
+            memberId, principal, purpose, type, 
+            interestRate: customRate, 
+            dailyRepaymentAmount: customDaily,
+            issuedAt: customIssuedAt,
+            dueDate: customDueDate
+        } = parsed.data;
 
 		const interestRate = customRate ?? (type === "SHORT_TERM" ? 10 : 12);
 		const termMonths = type === "SHORT_TERM" ? 1 : 6;
@@ -138,16 +146,25 @@ router.post("/", requireRole("OFFICER"), upload.array("documents", 5), async (re
 		const totalDue = Number(principal) + interestAmount;
 		const monthlyInstallment = totalDue / termMonths;
 		
-		// Auto-calculate daily if not provided (assuming 30 days per month)
-		const dailyRepaymentAmount = customDaily ?? (totalDue / (termMonths * 30));
+        const issuedAt = customIssuedAt ? new Date(customIssuedAt) : new Date();
+        let dueDate;
+        if (customDueDate) {
+            dueDate = new Date(customDueDate);
+        } else {
+            dueDate = new Date(issuedAt);
+            if (type === "SHORT_TERM") {
+                dueDate.setDate(dueDate.getDate() + 30);
+            } else {
+                dueDate.setMonth(dueDate.getMonth() + 6);
+            }
+        }
 
-		const issuedAt = new Date();
-		const dueDate = new Date(issuedAt);
-		if (type === "SHORT_TERM") {
-			dueDate.setDate(dueDate.getDate() + 30);
-		} else {
-			dueDate.setMonth(dueDate.getMonth() + 6);
-		}
+        // Calculate days for daily repayment
+        const diffTime = Math.abs(dueDate.getTime() - issuedAt.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+		
+		// Auto-calculate daily if not provided
+		const dailyRepaymentAmount = customDaily ?? (totalDue / diffDays);
 
 		const loan = await prisma.$transaction(async (tx) => {
 			const createdLoan = await tx.loan.create({

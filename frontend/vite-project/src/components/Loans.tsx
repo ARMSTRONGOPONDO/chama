@@ -1,6 +1,7 @@
 import { API_BASE } from '../config';
 import type { Member, Loan, LoanForm } from '../types';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { Calendar } from './Calendar';
 
 type LoansProps = {
     members: Member[];
@@ -26,6 +27,46 @@ export function Loans({
     setAlert,
 }: LoansProps) {
     const [searchTerm, setSearchTerm] = useState('');
+    const [isStartCalendarOpen, setIsStartCalendarOpen] = useState(false);
+    const [isEndCalendarOpen, setIsEndCalendarOpen] = useState(false);
+    const startCalendarRef = useRef<HTMLDivElement>(null);
+    const endCalendarRef = useRef<HTMLDivElement>(null);
+
+    // Close calendars on outside click
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (startCalendarRef.current && !startCalendarRef.current.contains(event.target as Node)) {
+                setIsStartCalendarOpen(false);
+            }
+            if (endCalendarRef.current && !endCalendarRef.current.contains(event.target as Node)) {
+                setIsEndCalendarOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Helper to format date without timezone shift
+    const formatLocalDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    // Auto-calculate end date when start date or type changes
+    useEffect(() => {
+        if (loanForm.issuedAt) {
+            const start = new Date(loanForm.issuedAt);
+            const end = new Date(start);
+            if (loanForm.type === 'SHORT_TERM') {
+                end.setDate(end.getDate() + 30);
+            } else {
+                end.setMonth(end.getMonth() + 6);
+            }
+            setLoanForm(prev => ({ ...prev, dueDate: formatLocalDate(end) }));
+        }
+    }, [loanForm.issuedAt, loanForm.type]);
 
     const handleVerifyLoan = async (loanId: string) => {
         if (!currentUser || currentUser.role !== 'VERIFIER') {
@@ -119,6 +160,58 @@ export function Loans({
                             ))}
                         </select>
                     </label>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                        <div style={{ position: 'relative' }} ref={startCalendarRef}>
+                            <label>
+                                Loan Start Date
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={loanForm.issuedAt || 'Select Start Date'}
+                                    onClick={() => setIsStartCalendarOpen(!isStartCalendarOpen)}
+                                    style={{ cursor: 'pointer', background: '#fff' }}
+                                    required
+                                />
+                            </label>
+                            {isStartCalendarOpen && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: '5px' }}>
+                                    <Calendar 
+                                        selectedDate={loanForm.issuedAt ? new Date(loanForm.issuedAt) : new Date()} 
+                                        onChange={(date) => {
+                                            setLoanForm(prev => ({ ...prev, issuedAt: formatLocalDate(date) }));
+                                            setIsStartCalendarOpen(false);
+                                        }} 
+                                    />
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ position: 'relative' }} ref={endCalendarRef}>
+                            <label>
+                                Loan End Date
+                                <input
+                                    type="text"
+                                    readOnly
+                                    value={loanForm.dueDate || 'Select End Date'}
+                                    onClick={() => setIsEndCalendarOpen(!isEndCalendarOpen)}
+                                    style={{ cursor: 'pointer', background: '#fff' }}
+                                    required
+                                />
+                            </label>
+                            {isEndCalendarOpen && (
+                                <div style={{ position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: '5px' }}>
+                                    <Calendar 
+                                        selectedDate={loanForm.dueDate ? new Date(loanForm.dueDate) : new Date()} 
+                                        onChange={(date) => {
+                                            setLoanForm(prev => ({ ...prev, dueDate: formatLocalDate(date) }));
+                                            setIsEndCalendarOpen(false);
+                                        }} 
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
                         <label>
                             Principal (KSh)

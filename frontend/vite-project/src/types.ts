@@ -85,6 +85,8 @@ export type LoanForm = {
     interestRate?: string;
     dailyRepaymentAmount?: string;
     documents?: FileList | null;
+    issuedAt?: string;
+    dueDate?: string;
 }
 
 export type Group = {

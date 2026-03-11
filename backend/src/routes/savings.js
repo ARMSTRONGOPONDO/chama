@@ -8,63 +8,56 @@ const savingSchema = z.object({
   memberId: z.string().min(1),
   amount: z.preprocess((val) => Number(val), z.number().positive()),
   month: z.string().refine((val) => !Number.isNaN(Date.parse(val))),
+  contributionDate: z.string().optional(),
   transactionReference: z.string().optional(),
-  note: z.string().max(280).optional(),
+  note: z.string().optional(),
 });
 
 router.post("/", async (req, res) => {
-  const parsed = savingSchema.safeParse(req.body);
-  if (!parsed.success) {
-    return res.status(400).json({ errors: parsed.error.errors });
+  const parseResult = savingSchema.safeParse(req.body);
+  if (!parseResult.success) {
+    return res.status(400).json({ errors: parseResult.error.errors });
   }
 
   try {
+    const { month, contributionDate, ...savingData } = parseResult.data;
     const saving = await prisma.saving.create({
       data: {
-        memberId: parsed.data.memberId,
-        amount: parsed.data.amount.toFixed(2),
-        month: new Date(parsed.data.month),
-        transactionReference: parsed.data.transactionReference,
-        note: parsed.data.note,
+        ...savingData,
+        month: new Date(month),
+        contributionDate: contributionDate ? new Date(contributionDate) : new Date(),
       },
     });
-
     res.status(201).json(saving);
   } catch (error) {
-    console.error(error);
+    console.error("Failed to record saving", error);
     res.status(500).json({ error: "Unable to record saving" });
   }
 });
 
 router.get("/summary", async (req, res) => {
-  const [totalSavingsData, members] = await Promise.all([
-    prisma.saving.aggregate({ _sum: { amount: true } }),
-    prisma.member.findMany({
-      select: {
-        id: true,
-        name: true,
-        memberNumber: true,
-        savings: { select: { amount: true } },
-      },
-    }),
-  ]);
+  try {
+    const members = await prisma.member.findMany({
+      include: { savings: true },
+    });
 
-  const formatter = (value) => Number(value ?? 0).toFixed(2);
-
-  const memberSummaries = members.map((member) => {
-    const totalSaved = member.savings.reduce((sum, saving) => sum + Number(saving.amount), 0);
-    return {
-      id: member.id,
-      name: member.name,
-      memberNumber: member.memberNumber,
-      totalSaved: totalSaved.toFixed(2),
+    const summary = {
+      totalGroupSavings: members
+        .reduce((sum, m) => sum + m.savings.reduce((s, sav) => s + Number(sav.amount), 0), 0)
+        .toFixed(2),
+      members: members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        memberNumber: m.memberNumber,
+        totalSaved: m.savings.reduce((s, sav) => s + Number(sav.amount), 0).toFixed(2),
+      })),
     };
-  });
 
-  res.json({
-    totalGroupSavings: formatter(totalSavingsData._sum.amount),
-    members: memberSummaries,
-  });
+    res.json(summary);
+  } catch (error) {
+    console.error("Failed to load summary", error);
+    res.status(500).json({ error: "Unable to load summary" });
+  }
 });
 
 module.exports = router;

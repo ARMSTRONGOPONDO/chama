@@ -41,6 +41,7 @@ model Saving {
   memberId             String
   amount               Decimal  @db.Decimal(12, 2)
   month                DateTime
+  contributionDate     DateTime @default(now())
   recordedAt           DateTime @default(now())
   transactionReference String?  // For MPESA details
   note                 String?

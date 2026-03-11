@@ -21,11 +21,23 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
     const [groups, setGroups] = useState<Group[]>([]);
     const [selectedGroupId, setSelectedGroupId] = useState('');
     const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
-    const [month, setMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
-    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+    
+    // Exact Date Picker
+    const [contributionDate, setContributionDate] = useState(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+    const [isDateCalendarOpen, setIsDateCalendarOpen] = useState(false);
+    
     const [bulkEntries, setBulkEntries] = useState<BulkSavingEntry[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const calendarRef = useRef<HTMLDivElement>(null);
+    
+    const dateCalendarRef = useRef<HTMLDivElement>(null);
+
+    // Helper to format date without timezone shift
+    const formatLocalDate = (date: Date) => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
 
     useEffect(() => {
         const fetchGroups = async () => {
@@ -50,7 +62,6 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
             const group = groups.find(g => g.id === selectedGroupId);
             if (group) {
                 setSelectedGroup(group);
-                // Preserve existing amounts if group didn't change
                 setBulkEntries(group.members.map(m => {
                     const existing = bulkEntries.find(e => e.memberId === m.id);
                     return {
@@ -68,11 +79,11 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
         }
     }, [selectedGroupId, groups]);
 
-    // Close calendar on outside click
+    // Close calendars on outside click
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
-            if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
-                setIsCalendarOpen(false);
+            if (dateCalendarRef.current && !dateCalendarRef.current.contains(event.target as Node)) {
+                setIsDateCalendarOpen(false);
             }
         }
         document.addEventListener("mousedown", handleClickOutside);
@@ -96,6 +107,9 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
         let successCount = 0;
         let failCount = 0;
 
+        // Automatically derive Reporting Month (YYYY-MM-01) from Contribution Date
+        const derivedMonth = `${contributionDate.substring(0, 7)}-01`;
+
         for (const entry of entriesToSubmit) {
             try {
                 const response = await fetch(`${API_BASE}/api/savings`, {
@@ -107,7 +121,8 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
                     body: JSON.stringify({
                         memberId: entry.memberId,
                         amount: entry.amount,
-                        month: `${month}-01`, // Send as full date
+                        month: derivedMonth,
+                        contributionDate: contributionDate,
                         transactionReference: entry.transactionReference,
                         note: entry.note
                     }),
@@ -147,50 +162,51 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
                 }}>
                     <div>
                         <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#1e293b' }}>Group Bulk Savings</h3>
-                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>Record multiple contributions at once</p>
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>Record contributions by exact date</p>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', position: 'relative' }} ref={calendarRef}>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Contribution Month</span>
+                    <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                        {/* Exact Date Picker */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', position: 'relative' }} ref={dateCalendarRef}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Contribution Date</span>
                             <div 
-                                onClick={() => setIsCalendarOpen(!isCalendarOpen)}
+                                onClick={() => setIsDateCalendarOpen(!isDateCalendarOpen)}
                                 style={{ 
                                     padding: '0.5rem', 
-                                    width: '200px', 
+                                    width: '220px', 
                                     background: 'white', 
                                     border: '1px solid var(--color-primary)', 
                                     borderRadius: '0.5rem',
                                     cursor: 'pointer',
-                                    fontSize: '0.9rem',
+                                    fontSize: '0.95rem',
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
                                     boxShadow: '0 2px 4px rgba(124, 58, 237, 0.1)'
                                 }}
                             >
-                                <span style={{ fontWeight: 600 }}>{new Date(month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                                <span style={{ fontWeight: 600 }}>{contributionDate}</span>
                                 <span>📅</span>
                             </div>
-                            {isCalendarOpen && (
+                            {isDateCalendarOpen && (
                                 <div style={{ position: 'absolute', top: '100%', right: 0, zIndex: 100, marginTop: '8px' }}>
                                     <Calendar 
-                                        mode="month"
-                                        selectedDate={new Date(month + '-01')} 
+                                        selectedDate={new Date(contributionDate)} 
                                         onChange={(date) => {
-                                            setMonth(date.toISOString().slice(0, 7));
-                                            setIsCalendarOpen(false);
+                                            setContributionDate(formatLocalDate(date));
+                                            setIsDateCalendarOpen(false);
                                         }} 
                                     />
                                 </div>
                             )}
                         </div>
+
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#475569', textTransform: 'uppercase' }}>Target Group</span>
                             <select 
                                 value={selectedGroupId} 
                                 onChange={(e) => setSelectedGroupId(e.target.value)}
-                                style={{ padding: '0.5rem', minWidth: '220px', background: 'white', border: '1px solid var(--color-border-soft)' }}
+                                style={{ padding: '0.5rem', minWidth: '240px', background: 'white', border: '1px solid var(--color-border-soft)' }}
                             >
                                 <option value="">Select a Group...</option>
                                 {groups.map(g => (
@@ -203,7 +219,7 @@ export function Savings({ currentUser, setAlert, refreshSummary }: SavingsProps)
 
                 {!selectedGroup ? (
                     <div style={{ textAlign: 'center', padding: '3rem 1rem', background: '#f1f5f9', borderRadius: '0.75rem', border: '2px dashed #cbd5e1' }}>
-                        <p style={{ color: '#64748b', fontWeight: 500 }}>Select a group and month above to start recording savings.</p>
+                        <p style={{ color: '#64748b', fontWeight: 500 }}>Select a group and contribution date above to start recording.</p>
                     </div>
                 ) : (
                     <div className="bulk-savings-table-container" style={{ overflowX: 'auto' }}>
