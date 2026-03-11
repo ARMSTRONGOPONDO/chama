@@ -79,7 +79,7 @@ model Repayment {
   loan             Loan     @relation(fields: [loanId], references: [id])
   loanId           String
   amount           Decimal  @db.Decimal(12, 2)
-  remainingBalance Decimal  @db.Decimal(12, 2)
+  remainingBalance Decimal? @db.Decimal(12, 2)
   paidAt           DateTime @default(now())
   note             String?
 }
