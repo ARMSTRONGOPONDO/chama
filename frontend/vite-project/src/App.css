@@ -306,8 +306,45 @@ button[type="submit"] {
     bottom: 4px;
 }
 
-.calendar-cell.selected .indicator-dot {
-    background-color: white;
+/* Repayment Status Styles */
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    position: absolute;
+    bottom: 4px;
+}
+
+.dot-paid { background-color: #10b981; }
+.dot-missed { background-color: #ef4444; }
+.dot-late { background-color: #f59e0b; }
+.dot-upcoming { background-color: #94a3b8; }
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.legend-item span {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.calendar-cell.status-paid { background-color: #ecfdf5; }
+.calendar-cell.status-missed { background-color: #fef2f2; }
+.calendar-cell.status-late { background-color: #fffbeb; }
+.calendar-cell.status-upcoming { background-color: #f8fafc; }
+
+.calendar-cell.selected.status-paid,
+.calendar-cell.selected.status-missed,
+.calendar-cell.selected.status-late {
+    color: white;
 }
 
 @media (max-width: 768px) {
